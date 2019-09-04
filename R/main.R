@@ -22,7 +22,7 @@ library(DatabaseConnector)
 connectionDetails <- createConnectionDetails(dbms="sql server", 
                                              server="omop.dbmi.columbia.edu",
                                              user="lz2629",
-                                             password="ZHcar0811.")
+                                             password="")
 
 DatabaseConnector::connect(connectionDetails)
 
