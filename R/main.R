@@ -14,17 +14,3 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-library(rJava) #if not working: try running "sudo R CMD javareconf" in terminal
-library(SqlRender)
-library(DatabaseConnector)
-?createConnectionDetails
-connectionDetails <- createConnectionDetails(dbms="sql server", 
-                                             server="omop.dbmi.columbia.edu",
-                                             user="lz2629",
-                                             password="")
-
-DatabaseConnector::connect(connectionDetails)
-
-listingIngredients()
-createCohorts()

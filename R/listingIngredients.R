@@ -14,38 +14,57 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+#' Generate list of concept Ids of interest
+#'
+#' @details
+#' This function
+#'
+#' @param connection         Name of local folder where the results were generated; make sure to use forward slashes
+#'                             (/). Do not use a folder on a network drive since this greatly impacts
+#'                             performance.
+#' @param cdmDatabaseSchema     How many parallel cores should be used? If more cores are made
+#'                              available this can speed up the analyses.
+#'
+#' @export
 listingIngredients <- function(connection,
                                cdmDatabaseSchema,
                                vocabularyDatabaseSchema = cdmDatabaseSchema,
                                minimumProportion = 0.05,
-                               outputFolder){
-  sql<-"SELECT COUNT(PERSON_ID) as total_person_count FROM @cdmDatabaseSchema.PERSON"
-  
-  
-  totalPersonCount 
-  
-  limitNumber = totalPersonCount * minimumProportion
-  
-  sql <- "select drug.drug_concept_id, COUNT(distinct person_id)
+                               targetDrugTable = 'DRUG_ERA'){
+
+  #extract whole number of population from the database
+  sql<-"SELECT COUNT(PERSON_ID) as total_person_count FROM @cdm_database_schema.PERSON;"
+  sql<-SqlRender::render(sql,
+                         cdm_database_schema = cdmDatabaseSchema)
+  sql<-SqlRender::translate(sql, targetDialect = connectionDetails$dbms)
+
+  totalPersonCount<-DatabaseConnector::querySql(connection, sql)
+  colnames(totalPersonCount)<-SqlRender::snakeCaseToCamelCase(colnames(totalPersonCount))
+
+  limitNumber = round(as.numeric(totalPersonCount) * minimumProportion,0)
+
+
+  #extract list of drug concept Ids from 'drug era' table
+  sql <- "select concept.concept_id, concept.concept_name, COUNT(distinct person_id) AS person_count
   from
-          @cdmDatabaseSchema.drug_era drug
-          JOIN @vocabularyDatabaseSchema.concept concept
+          @cdm_database_schema.@target_drug_table drug
+          JOIN @vocabulary_database_schema.concept concept
           on drug.drug_concept_id = concept.concept_id AND concept.invalid_reason is NULL AND concept.standard_concept = 'S'
-  GROUP BY drug.drug_concept_id
+  GROUP BY concept.concept_id, concept.concept_name
   HAVING COUNT(distinct person_id) > @limit_number
   "
-  
-  sql <- SqlRender::loadRenderTranslateSql(sqlFilename = "cohort.sql",
-                                           packageName = "MvConfounder",
-                                           dbms = attr(connection, "dbms"),
-                                           oracleTempSchema = oracleTempSchema,
-                                           cdm_database_schema = cdmDatabaseSchema,
-                                           ingredient_concept_id = ingredientConceptId,
-                                           measurement_concept_ids= measurementConceptIds,
-                                           drug_window = drugWindow,
-                                           lab_window = labWindow,
-                                           target_cohort_id = targetCohortId,
-                                           cohort_table = cohortTable,
-                                           target_database_schmea = cohortDatabaseSchema,
-                                           vocabulary_database_schema=vocabularyDatabaseSchema)
+  sql<-SqlRender::render(sql,
+                         cdm_database_schema = cdmDatabaseSchema,
+                         target_drug_table = targetDrugTable,
+                         vocabulary_database_schema = vocabularyDatabaseSchema,
+                         limit_number = limitNumber
+
+                         )
+  sql<-SqlRender::translate(sql, targetDialect = connectionDetails$dbms)
+  drugConceptIds<-DatabaseConnector::querySql(connection, sql)
+
+  colnames(drugConceptIds)<-SqlRender::snakeCaseToCamelCase(colnames(drugConceptIds))
+
+  return(list(drugConceptIds=drugConceptIds,limitNumber=limitNumber))
 }

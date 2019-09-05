@@ -25,9 +25,8 @@ createCohorts <- function(connection,
                           drugWindow = 35,
                           labWindow = 35,
                           targetCohortId,
-                          cohortTable,
                           outputFolder) {
-  
+
   # Create study cohort table structure:
   sql <- SqlRender::loadRenderTranslateSql(sqlFilename = "cohort.sql",
                                            packageName = "MvConfounder",
