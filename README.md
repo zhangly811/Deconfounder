@@ -1,2 +1,2 @@
-# MvConfounder
-multivariate confounder
+# MvDeconfounder
+multivariate deconfounder

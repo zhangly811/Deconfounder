@@ -29,7 +29,7 @@ createCohorts <- function(connection,
 
   # Create study cohort table structure:
   sql <- SqlRender::loadRenderTranslateSql(sqlFilename = "cohort.sql",
-                                           packageName = "MvConfounder",
+                                           packageName = "MvDeconfounder",
                                            dbms = attr(connection, "dbms"),
                                            oracleTempSchema = oracleTempSchema,
                                            cdm_database_schema = cdmDatabaseSchema,
