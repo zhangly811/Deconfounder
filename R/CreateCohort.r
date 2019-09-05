@@ -14,31 +14,41 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+#' Generate cohort
+#'
+#' @details
+#' This function generates cohort for the multivariate deconfounder
+#'
+#' @param connection         Name of local folder where the results were generated; make sure to use forward slashes
+#'                             (/). Do not use a folder on a network drive since this greatly impacts
+#'                             performance.
+#' @param cdmDatabaseSchema     How many parallel cores should be used? If more cores are made
+#'                              available this can speed up the analyses.
+#'
+#' @export
 createCohorts <- function(connection,
                           cdmDatabaseSchema,
                           vocabularyDatabaseSchema = cdmDatabaseSchema,
                           cohortDatabaseSchema,
-                          cohortTable,
-                          oracleTempSchema,
-                          ingredientConceptId,
+                          targetCohortTable,
+                          ingredientConceptIds,
                           measurementConceptIds,
                           drugWindow = 35,
                           labWindow = 35,
-                          targetCohortId,
-                          outputFolder) {
+                          targetCohortId) {
 
   # Create study cohort table structure:
   sql <- SqlRender::loadRenderTranslateSql(sqlFilename = "cohort.sql",
                                            packageName = "MvDeconfounder",
                                            dbms = attr(connection, "dbms"),
-                                           oracleTempSchema = oracleTempSchema,
+                                           # oracleTempSchema = oracleTempSchema,
                                            cdm_database_schema = cdmDatabaseSchema,
-                                           ingredient_concept_id = ingredientConceptId,
+                                           ingredient_concept_ids = ingredientConceptIds,
                                            measurement_concept_ids= measurementConceptIds,
                                            drug_window = drugWindow,
                                            lab_window = labWindow,
                                            target_cohort_id = targetCohortId,
-                                           cohort_table = cohortTable,
+                                           target_cohort_table = targetCohortTable,
                                            target_database_schmea = cohortDatabaseSchema,
                                            vocabulary_database_schema=vocabularyDatabaseSchema)
   DatabaseConnector::executeSql(connection, sql, progressBar = TRUE, reportOverallTime = FALSE)

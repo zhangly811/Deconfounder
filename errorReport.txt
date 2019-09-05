@@ -1,0 +1,30 @@
+DBMS:
+sql server
+
+Error:
+com.microsoft.sqlserver.jdbc.SQLServerException: There is already an object named '#Codesets' in the database.
+
+SQL:
+CREATE TABLE #Codesets (
+codeset_id int NOT NULL,
+concept_id bigint NOT NULL
+)
+
+
+R version:
+R version 3.4.0 (2017-04-21)
+
+Platform:
+x86_64-w64-mingw32
+
+Attached base packages:
+- stats
+- graphics
+- grDevices
+- utils
+- datasets
+- methods
+- base
+
+Other attached packages:
+- MvDeconfounder (0.0.0.9000)
