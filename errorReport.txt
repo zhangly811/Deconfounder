@@ -2,14 +2,10 @@ DBMS:
 sql server
 
 Error:
-com.microsoft.sqlserver.jdbc.SQLServerException: There is already an object named '#Codesets' in the database.
+com.microsoft.sqlserver.jdbc.SQLServerException: Must declare the scalar variable "@cohort_database_schema".
 
 SQL:
-CREATE TABLE #Codesets (
-codeset_id int NOT NULL,
-concept_id bigint NOT NULL
-)
-
+select * from @cohort_database_schema.@target_cohort_table where cohort_definition_id = @target_cohort_id;
 
 R version:
 R version 3.4.0 (2017-04-21)

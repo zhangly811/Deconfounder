@@ -7,20 +7,20 @@
         "items": [
           {
             "concept": {
-              "CONCEPT_CLASS_ID": "Ingredient",
-              "CONCEPT_CODE": "1191",
               "CONCEPT_ID": 1112807,
               "CONCEPT_NAME": "Aspirin",
-              "DOMAIN_ID": "Drug",
-              "INVALID_REASON": "V",
-              "INVALID_REASON_CAPTION": "Valid",
               "STANDARD_CONCEPT": "S",
               "STANDARD_CONCEPT_CAPTION": "Standard",
-              "VOCABULARY_ID": "RxNorm"
+              "INVALID_REASON": "V",
+              "INVALID_REASON_CAPTION": "Valid",
+              "CONCEPT_CODE": "1191",
+              "DOMAIN_ID": "Drug",
+              "VOCABULARY_ID": "RxNorm",
+              "CONCEPT_CLASS_ID": "Ingredient"
             },
             "includeDescendants": true
           }
-          ]
+        ]
       }
     },
     {
@@ -30,36 +30,36 @@
         "items": [
           {
             "concept": {
-              "CONCEPT_CLASS_ID": "Lab Test",
-              "CONCEPT_CODE": "3094-0",
               "CONCEPT_ID": 3013682,
-              "CONCEPT_NAME": "Urea nitrogen [Mass/volume] in Serum or Plasma",
-              "DOMAIN_ID": "Measurement",
-              "INVALID_REASON": "V",
-              "INVALID_REASON_CAPTION": "Valid",
+              "CONCEPT_NAME": "Urea nitrogen serum/plasma",
               "STANDARD_CONCEPT": "S",
               "STANDARD_CONCEPT_CAPTION": "Standard",
-              "VOCABULARY_ID": "LOINC"
+              "INVALID_REASON": "V",
+              "INVALID_REASON_CAPTION": "Valid",
+              "CONCEPT_CODE": "3094-0",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test"
             }
           },
           {
             "concept": {
-              "CONCEPT_CLASS_ID": "Lab Test",
-              "CONCEPT_CODE": "2160-0",
               "CONCEPT_ID": 3016723,
-              "CONCEPT_NAME": "Creatinine [Mass/volume] in Serum or Plasma",
-              "DOMAIN_ID": "Measurement",
-              "INVALID_REASON": "V",
-              "INVALID_REASON_CAPTION": "Valid",
+              "CONCEPT_NAME": "Creatinine serum/plasma",
               "STANDARD_CONCEPT": "S",
               "STANDARD_CONCEPT_CAPTION": "Standard",
-              "VOCABULARY_ID": "LOINC"
+              "INVALID_REASON": "V",
+              "INVALID_REASON_CAPTION": "Valid",
+              "CONCEPT_CODE": "2160-0",
+              "DOMAIN_ID": "Measurement",
+              "VOCABULARY_ID": "LOINC",
+              "CONCEPT_CLASS_ID": "Lab Test"
             }
           }
-          ]
+        ]
       }
     }
-    ],
+  ],
   "PrimaryCriteria": {
     "CriteriaList": [
       {
@@ -67,7 +67,7 @@
           "CodesetId": 0
         }
       }
-      ],
+    ],
     "ObservationWindow": {
       "PriorDays": 1,
       "PostDays": 1
@@ -102,15 +102,14 @@
               "End": {
                 "Days": 1,
                 "Coeff": -1
-              },
-              "UseEventEnd": false
+              }
             },
             "Occurrence": {
               "Type": 2,
               "Count": 1
             }
           }
-          ],
+        ],
         "DemographicCriteriaList": [],
         "Groups": []
       }
@@ -134,25 +133,23 @@
               "End": {
                 "Days": 30,
                 "Coeff": 1
-              },
-              "UseEventEnd": false
+              }
             },
             "Occurrence": {
               "Type": 2,
               "Count": 1
             }
           }
-          ],
+        ],
         "DemographicCriteriaList": [],
         "Groups": []
       }
     }
-    ],
+  ],
   "EndStrategy": {
-    "CustomEra": {
-      "DrugCodesetId": 0,
-      "GapDays": 60,
-      "Offset": 0
+    "DateOffset": {
+      "DateField": "StartDate",
+      "Offset": 1
     }
   },
   "CensoringCriteria": [],
@@ -160,6 +157,5 @@
     "CollapseType": "ERA",
     "EraPad": 0
   },
-  "CensorWindow": {},
-  "cdmVersionRange": ">=5.0.0"
+  "CensorWindow": {}
 }

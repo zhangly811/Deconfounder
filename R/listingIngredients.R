@@ -59,7 +59,6 @@ listingIngredients <- function(connection,
                          target_drug_table = targetDrugTable,
                          vocabulary_database_schema = vocabularyDatabaseSchema,
                          limit_number = limitNumber
-
                          )
   sql<-SqlRender::translate(sql, targetDialect = connectionDetails$dbms)
   drugConceptIds<-DatabaseConnector::querySql(connection, sql)
