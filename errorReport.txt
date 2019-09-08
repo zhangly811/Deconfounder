@@ -2,10 +2,13 @@ DBMS:
 sql server
 
 Error:
-com.microsoft.sqlserver.jdbc.SQLServerException: Must declare the scalar variable "@cohort_database_schema".
+cannot change working directory
 
 SQL:
-select * from @cohort_database_schema.@target_cohort_table where cohort_definition_id = @target_cohort_id;
+SELECT *
+FROM (
+SELECT row_id, covariate_id, covariate_value, time_id FROM #cov_1
+) all_covariates;
 
 R version:
 R version 3.4.0 (2017-04-21)
@@ -23,4 +26,3 @@ Attached base packages:
 - base
 
 Other attached packages:
-- MvDeconfounder (0.0.0.9000)
