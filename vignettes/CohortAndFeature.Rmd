@@ -1,0 +1,167 @@
+---
+title: "Vignette for MvDeconfounder"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+To begin, install the following libraries from OHDSI github. Packages only need to be installed once.
+```{r}
+# devtools::install_github("ohdsi/SqlRender")
+# devtools::install_github("ohdsi/DatabaseConnector")
+# devtools::install_github("ohdsi/FeatureExtraction")
+# devtools::install_github("ohdsi/PatientLevelPrediction")
+```
+
+Connect to your database using the *DatabaseConnector* package. For details about the *createConnectionDetails* function, run ?createConnectionDetails or help(createConnectionDetails) in the R console.
+```{r connection}
+connectionDetails = DatabaseConnector::createConnectionDetails(dbms = "sql server",
+                                             server = "omop.dbmi.columbia.edu")
+connection = DatabaseConnector::connect(connectionDetails)
+
+```
+
+Specify the following database schemas. The *targetCohortTable* is the name of the cohort table. Change the *targetCohortId* when create a new cohort.
+```{r}
+cdmDatabaseSchema = "ohdsi_cumc_deid_pending.dbo"
+cohortDatabaseSchema = "ohdsi_cumc_deid_pending.results"
+targetCohortTable = "MVDECONFOUNDER_COHORT"
+targetCohortId = 1
+
+```
+
+
+Extract the ingredients that appear in more than 0.1% of the total population. In our case, the limit number is ~6000 patients. The *minimumProportion* can be changed, and the *targetDrugTable* can be either 'DRUG_ERA' or 'DRUG_EXPOSURE'. 
+```{r}
+ingredientList<-MvDeconfounder::listingIngredients(connection,
+                                                   cdmDatabaseSchema,
+                                                   vocabularyDatabaseSchema = cdmDatabaseSchema,
+                                                   minimumProportion = 0.001,
+                                                   targetDrugTable = 'DRUG_ERA')
+# saveRDS(ingredientList, file="dat/ingredientList.rds")
+ingredientConceptIds = ingredientList[[1]]$conceptId
+#num ingredients
+length(ingredientConceptIds)
+```
+
+Similary to find ingredients, we also find the measurements that appear in more than 0.1% of the total popoulation.
+```{r}
+measurementList<-MvDeconfounder::listingMeasurements(connection,
+                                                    cdmDatabaseSchema,
+                                                    vocabularyDatabaseSchema = cdmDatabaseSchema,
+                                                    minimumProportion = 0.001)
+# saveRDS(measurementList, file="dat/measurementList.rds")
+measurementConceptIds = measurementList[[1]]$conceptId
+#num measurements
+length(measurementConceptIds)
+```
+Create a cohort. Patients who take any medication that is in the ingredient list and has at least one pair of pre-treatment and post-treatment measurement values of the lab test are included in the cohort. A patient can contribute multiple records to the cohort if the patient has multiple records that satisfy the inclusion criteria.
+
+WARNING: This step can take a long time to run!
+
+```{r}
+MvDeconfounder::createCohorts(connection,
+                              cdmDatabaseSchema,
+                              oracleTempSchema = NULL,
+                              vocabularyDatabaseSchema = cdmDatabaseSchema,
+                              cohortDatabaseSchema,
+                              targetCohortTable,
+                              ingredientConceptIds,
+                              measurementConceptIds,
+                              labWindow = 35,
+                              targetCohortId = targetCohortId)
+
+```
+
+Extract the cohort table from the sql database and store as an R data.frame. Because subject_id is not unique, we create a unique identifier *rowId* in the cohort table.
+
+```{r}
+sql = "select * from @cohort_database_schema.@target_cohort_table where cohort_definition_id = @target_cohort_id;"
+sql<-SqlRender::render(sql,
+                       cohort_database_schema = cohortDatabaseSchema,
+                       target_cohort_table = targetCohortTable,
+                       target_cohort_id = targetCohortId
+)
+sql<-SqlRender::translate(sql, targetDialect = connectionDetails$dbms)
+cohort<-DatabaseConnector::querySql(connection, sql)
+# Create unique id: rowId
+colnames(cohort)<-SqlRender::snakeCaseToCamelCase(colnames(cohort))
+cohort$rowId <- seq(nrow(cohort))
+#num records
+nrow(cohort)
+#num patients
+length(unique(cohort$subjectId))
+
+```
+
+
+To extract features for this cohort, we first specify the settings for measurement and drug separately using functions in the [FeatureExtraction](https://github.com/OHDSI/FeatureExtraction) package. For example, we extract any measurement from the list *measurementConceptIds* that appears either between -35 and -1 day(s) prior to treatments,  or between 1 and 35 day(s) after treatments. 
+
+The drugs at the day of exposure will be extracted.
+
+```{r}
+# get features
+measCovariateSettings <- FeatureExtraction::createTemporalCovariateSettings(useMeasurementValue = TRUE,
+                                                                            temporalStartDays = c(-35,1),
+                                                                            temporalEndDays   = c(-1,35),
+                                                                            includedCovariateConceptIds = measurementConceptIds
+                                                                            )
+
+drugCovariateSettings <- FeatureExtraction::createCovariateSettings(useDrugEraShortTerm =TRUE,
+                                                                    shortTermStartDays = 0,
+                                                                    endDays = 0,
+                                                                    includedCovariateConceptIds = ingredientConceptIds
+)
+```
+
+We execute the above settings using *getPlpData* from the [PatientLevelPrediction](https://github.com/OHDSI/PatientLevelPrediction/blob/master/README.md) package. Depends on the size of the cohort, this step can take a very long time so we suggest sample a fraction first to test the script. Here we sample 100,000 records. Make sure to set seed so that you sample the same records when extract measurements and drugs. To extract features for the entire cohort, set sampleSize= NULL.
+```{r}
+options(fftempdir = tempdir())
+# memory.limit(size=1024*12)
+# memory.size(max=NA)
+set.seed(1)
+plpData.meas <- PatientLevelPrediction::getPlpData(connectionDetails = connectionDetails,
+                                                      cdmDatabaseSchema = cdmDatabaseSchema,
+                                                      cohortDatabaseSchema = cohortDatabaseSchema,
+                                                      cohortTable = targetCohortTable,
+                                                      cohortId = targetCohortId,
+                                                      covariateSettings = measCovariateSettings,
+                                                      outcomeDatabaseSchema = cohortDatabaseSchema,
+                                                      outcomeTable = targetCohortTable,
+                                                      outcomeIds = targetCohortId,
+                                                      sampleSize = 1e+5#NULL
+)
+
+# saveRDS(plpData.meas, file='dat/plpData_meas_sampleSize1e5.rds')
+
+
+plpData.drug <- PatientLevelPrediction::getPlpData(connectionDetails = connectionDetails,
+                                                   cdmDatabaseSchema = cdmDatabaseSchema,
+                                                   cohortDatabaseSchema = cohortDatabaseSchema,
+                                                   cohortTable = targetCohortTable,
+                                                   cohortId = targetCohortId,
+                                                   covariateSettings = drugCovariateSettings,
+                                                   outcomeDatabaseSchema = cohortDatabaseSchema,
+                                                   outcomeTable = targetCohortTable,
+                                                   outcomeIds = targetCohortId,
+                                                   sampleSize = 1e+5#NULL
+)
+# saveRDS(plpData.drug, file='dat/plpData_drug_sampleSize1e5.rds')
+length(unique(plpData.meas$cohorts$subjectId))
+length(unique(plpData.drug$cohorts$subjectId))
+
+```
+
+Convert drug and measurement to two sparse matrices.
+
+```{r}
+drugSparseMat <- toSparseM(plpData.drug, map=plpMap$map)
+saveRDS(drugSparseMat, file="drugSparseMat.rds")
+measSparseMat <- toSparseM(plpData.meas, map=plpMap$map)
+saveRDS(measSparseMat, file="measSparseMat.rds")
+
+```
+
+```{r}
+
+```
+
