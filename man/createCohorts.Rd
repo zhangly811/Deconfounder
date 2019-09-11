@@ -4,11 +4,10 @@
 \alias{createCohorts}
 \title{Generate cohort}
 \usage{
-createCohorts(connection, cdmDatabaseSchema,
+createCohorts(connection, cdmDatabaseSchema, oracleTempSchema = NULL,
   vocabularyDatabaseSchema = cdmDatabaseSchema, cohortDatabaseSchema,
-  cohortTable, oracleTempSchema, ingredientConceptIds,
-  measurementConceptIds, drugWindow = 35, labWindow = 35,
-  targetCohortId, outputFolder)
+  targetCohortTable, ingredientConceptIds, measurementConceptIds,
+  labWindow = 35, targetCohortId)
 }
 \arguments{
 \item{connection}{Name of local folder where the results were generated; make sure to use forward slashes

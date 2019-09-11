@@ -39,14 +39,14 @@ createCohorts <- function(connection,
                           targetCohortId) {
   ingredientConceptIds<-paste(ingredientConceptIds,collapse=",")
   measurementConceptIds<-paste(measurementConceptIds,collapse=",")
-  # Create study cohort table structure:
-  sql <- SqlRender::loadRenderTranslateSql(sqlFilename = "CreateCohortTable.sql",
-                                           packageName = "MvDeconfounder",
-                                           dbms = attr(connection, "dbms"),
-                                           oracleTempSchema = oracleTempSchema,
-                                           cohort_database_schema = cohortDatabaseSchema,
-                                           cohort_table = targetCohortTable)
-  DatabaseConnector::executeSql(connection, sql, progressBar = FALSE, reportOverallTime = FALSE)
+  # # Create study cohort table structure:
+  # sql <- SqlRender::loadRenderTranslateSql(sqlFilename = "CreateCohortTable.sql",
+  #                                          packageName = "MvDeconfounder",
+  #                                          dbms = attr(connection, "dbms"),
+  #                                          oracleTempSchema = oracleTempSchema,
+  #                                          cohort_database_schema = cohortDatabaseSchema,
+  #                                          cohort_table = targetCohortTable)
+  # DatabaseConnector::executeSql(connection, sql, progressBar = FALSE, reportOverallTime = FALSE)
 
   # Create study cohort table structure:
   sql <- SqlRender::loadRenderTranslateSql(sqlFilename = "cohort.sql",

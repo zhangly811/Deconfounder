@@ -27,11 +27,10 @@
 #'                              available this can speed up the analyses.
 #'
 #' @export
-listingIngredients <- function(connection,
+listingMeasurements <- function(connection,
                                cdmDatabaseSchema,
                                vocabularyDatabaseSchema = cdmDatabaseSchema,
-                               minimumProportion = 0.01,
-                               targetDrugTable = 'DRUG_ERA'){
+                               minimumProportion = 0.01){
 
   #extract whole number of population from the database
   sql<-"SELECT COUNT(PERSON_ID) as total_person_count FROM @cdm_database_schema.PERSON;"
@@ -45,27 +44,23 @@ listingIngredients <- function(connection,
   limitNumber = round(as.numeric(totalPersonCount) * minimumProportion,0)
 
 
-  #extract list of drug concept Ids from 'drug era' table
+  #extract list of measurement concept Ids from measurement table
   sql <- "select concept.concept_id, concept.concept_name, COUNT(distinct person_id) AS person_count
   from
-          @cdm_database_schema.@target_drug_table drug
-          JOIN @vocabulary_database_schema.concept concept
-          on drug.drug_concept_id = concept.concept_id AND concept.invalid_reason is NULL AND concept.standard_concept = 'S'
+  @cdm_database_schema.MEASUREMENT meas
+  JOIN @vocabulary_database_schema.concept concept
+  on meas.measurement_concept_id = concept.concept_id AND concept.invalid_reason is NULL AND concept.standard_concept = 'S'
   GROUP BY concept.concept_id, concept.concept_name
   HAVING COUNT(distinct person_id) > @limit_number
   "
   sql<-SqlRender::render(sql,
                          cdm_database_schema = cdmDatabaseSchema,
-                         target_drug_table = targetDrugTable,
                          vocabulary_database_schema = vocabularyDatabaseSchema,
                          limit_number = limitNumber
-                         )
+  )
   sql<-SqlRender::translate(sql, targetDialect = connectionDetails$dbms)
-  drugConceptIds<-DatabaseConnector::querySql(connection, sql)
-  colnames(drugConceptIds)<-SqlRender::snakeCaseToCamelCase(colnames(drugConceptIds))
-  # remove vaccines
-  nameContains <- c("vaccine", "virus", "antigen")
-  drugConceptIds <- drugConceptIds[!grepl(paste(nameContains,collapse="|"), drugConceptIds$conceptName, ignore.case=TRUE),]
+  measConceptIds<-DatabaseConnector::querySql(connection, sql)
+  colnames(measConceptIds)<-SqlRender::snakeCaseToCamelCase(colnames(measConceptIds))
 
-  return(list(drugConceptIds=drugConceptIds,limitNumber=limitNumber))
+  return(list(measConceptIds=measConceptIds,limitNumber=limitNumber))
 }

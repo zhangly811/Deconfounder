@@ -2,3 +2,4 @@
 
 export(createCohorts)
 export(listingIngredients)
+export(listingMeasurements)
