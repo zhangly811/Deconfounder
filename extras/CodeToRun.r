@@ -107,6 +107,9 @@ library(dplyr)
 library(magrittr)
 # compute the change of measurement
 measCovariates <- ff::as.ram(plpData.meas$covariates)
+
+##seperate two timeId
+
 measCovariates <- measCovariates[order(measCovariates$rowId, measCovariates$covariateId, measCovariates$timeId),] %>%
   dplyr::group_by(rowId, covariateId) %>%
   dplyr::mutate(change = c(NA, covariateValue[timeId==2] - covariateValue[timeId==1]))
