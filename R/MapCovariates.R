@@ -30,3 +30,38 @@ MapCovariates <- function(covariates, covariateRef, population, map){
               covariateRef=covariateRef,
               map=map))
 }
+
+toSparseM <- function(plpData,
+                      map,
+                      timeId=NULL){
+  cohorts = plpData$cohorts
+  cov <- plpData$covariates #ff::clone(plpData$covariates)
+  matrixDim <- c(max(cohorts$rowId), length(unique((cov$covariateId))))
+  if(!is.null(timeId)){
+    cov<-cov[cov$timeId==timeId,]
+  }
+  ParallelLogger::logDebug(paste0('covariateRef nrow: ', nrow(plpData$covariateRef)))
+
+  covref <- plpData$covariateRef#ff::clone(plpData$covariateRef)
+
+  cov<-ff::as.ram(cov)
+  cov<-merge(cov,map, by.x="covariateId", by.y = "oldIds", all =FALSE)
+
+  data <- Matrix::sparseMatrix(i=cov$rowId,
+                               j=cov$newIds,
+                               x=cov$covariateValue,
+                               dims=matrixDim) # edit this to max(map$newIds)
+
+  indexMat <- Matrix::sparseMatrix(i=cov$rowId,
+                               j=cov$newIds,
+                               x=T,
+                               dims=matrixDim) # edit this to max(map$newIds)
+
+
+  result <- list(data=data,
+                 index=indexMat,
+                 covariateRef=covref,
+                 map=map)
+  return(result)
+}
+
