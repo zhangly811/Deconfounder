@@ -26,7 +26,7 @@
 #'                              available this can speed up the analyses.
 #'
 #' @export
-createCohorts <- function(connection,
+createMvdCohorts <- function(connection,
                           cdmDatabaseSchema,
                           oracleTempSchema = NULL,
                           vocabularyDatabaseSchema = cdmDatabaseSchema,

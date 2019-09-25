@@ -17,7 +17,10 @@
 # devtools::install_github("ohdsi/SqlRender")
 # devtools::install_github("ohdsi/DatabaseConnector")
 # devtools::install_github("ohdsi/FeatureExtraction")
-# devtools::install_github("ohdsi/PatientLevelPrediction")
+# devtools::install_github("ohdsi/PatientLevelPrediction")''
+
+options(fftempdir = tempdir())
+memory.limit(size=1024*12)
 
 connectionDetails = DatabaseConnector::createConnectionDetails(dbms = "sql server",
                                                                server = "omop.dbmi.columbia.edu")
@@ -27,6 +30,31 @@ cdmDatabaseSchema = "ohdsi_cumc_deid_pending.dbo"
 cohortDatabaseSchema = "ohdsi_cumc_deid_pending.results"
 targetCohortTable = "MVDECONFOUNDER_COHORT"
 targetCohortId = 1
+
+outputFolder <- "C:/data/MvConfounderV1T1"
+
+
+
+mVdData<-generateMvdData(connection=connection,
+                          cdmDatabaseSchema=cdmDatabaseSchema,
+                          oracleTempSchema = NULL,
+                          vocabularyDatabaseSchema = cdmDatabaseSchema,
+                          cohortDatabaseSchema=cohortDatabaseSchema,
+                          targetCohortTable=targetCohortTable,
+                          minimumProportion = 0.001,
+                          targetDrugTable = 'DRUG_ERA',
+                          ingredientConceptIds=c(967823, 1124957, 1125315, 1177480),
+                          measurementConceptIds=as.numeric(c(3013682, 3016723, 3023103, 3015632, 3014576, 3019550, 3006923, 3013721, 3035995, 3006906, 3024128, 3024561, 33000483))
+,
+                          createTargetCohort = F,
+                          labWindow = 35,
+                          targetCohortId=targetCohortId,
+                          temporalStartDays = c(-35,1),
+                          temporalEndDays   = c(-1,35),
+                          sampleSize = 100,
+                          outputFolder)
+
+
 
 # ingredientList<-MvDeconfounder::listingIngredients(connection,
 #                                                    cdmDatabaseSchema,

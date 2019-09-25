@@ -4,6 +4,14 @@ reticulate::source_python("python/ed_bayesian_regression.py")
 reticulate::source_python("python/utils.py")
 reticulate::source_python("python/main.py")
 
+e <- environment()
+reticulate::source_python(system.file(package='MvDeconfounder','python','deep_exponential_family.py'), envir = e)
+reticulate::source_python(system.file(package='MvDeconfounder','python','ed_bayesian_regression.py'), envir = e)
+reticulate::source_python(system.file(package='MvDeconfounder','python','utils.py'), envir = e)
+reticulate::source_python(system.file(package='MvDeconfounder','python','main.py'), envir = e)
+
+data <- reticulate::r_to_py(x$data)
+
 # specify parameters
 learning_rate = 1e-4
 max_steps = as.integer(1000)
