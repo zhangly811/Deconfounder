@@ -1,12 +1,7 @@
 reticulate::use_python(Sys.which("python3"))
-reticulate::source_python("python/deep_exponential_family.py")
-reticulate::source_python("python/ed_bayesian_regression.py")
-reticulate::source_python("python/utils.py")
-reticulate::source_python("python/main.py")
-
 e <- environment()
-reticulate::source_python(system.file(package='MvDeconfounder','python','deep_exponential_family.py'), envir = e)
-reticulate::source_python(system.file(package='MvDeconfounder','python','ed_bayesian_regression.py'), envir = e)
+reticulate::source_python(system.file(package='MvDeconfounder','python','deepExponentialFamily.py'), envir = e)
+reticulate::source_python(system.file(package='MvDeconfounder','python','outcomeModel.py'), envir = e)
 reticulate::source_python(system.file(package='MvDeconfounder','python','utils.py'), envir = e)
 reticulate::source_python(system.file(package='MvDeconfounder','python','main.py'), envir = e)
 
