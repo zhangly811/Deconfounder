@@ -13,7 +13,7 @@ MapCovariates <- function(covariates, covariateRef, population, map){
 
   if(!is.null(map)){
     ParallelLogger::logTrace('restricting to model variables...')
-    ParallelLogger::logTrace(paste0('oldIds: ',length(map[,'oldIds'])))
+    ParallelLogger::logTrace(paste0('oldIds: ',length(mtap[,'oldIds'])))
     ParallelLogger::logTrace(paste0('newIds:', max(as.double(map[,'newIds']))))
     ind <- ffbase::ffmatch(x=covariateRef$covariateId, table=ff::as.ff(as.double(map[,'oldIds'])))
     ind <- ffbase::ffwhich(ind, !is.na(ind))

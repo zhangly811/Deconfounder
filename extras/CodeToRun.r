@@ -165,6 +165,12 @@ measChangeIndexMat[measChangeIndexMat==2]<-1
 # measChangeSparseMat[indexMat==0]<-NA
 Matrix::writeMM(measChangeSparseMat, file="dat/measChangeSparseMat.txt")
 Matrix::writeMM(measChangeIndexMat, file="dat/measChangeIndexMat.txt")
+#save measurement name to a csv file
+measName <- as.matrix(ff::as.ram(plpData.meas$covariateRef$covariateName))
+measName <- gsub(".*: ", "", measName)
+measName<-noquote(measName)
+write.csv(measName, file="dat/measName.csv")
+
 
 #create sparse drug matrix
 drugMappedCov<-MapCovariates (covariates=plpData.drug$covariates,
@@ -173,7 +179,11 @@ drugMappedCov<-MapCovariates (covariates=plpData.drug$covariates,
                               map=NULL)
 drugSparseMat <- toSparseM(plpData.drug, map=drugMappedCov$map)
 Matrix::writeMM(drugSparseMat$data, file="dat/drugSparseMat.txt")
-
+#save drug names to a csv file
+drugName <- as.matrix(ff::as.ram(drugSparseMat$covariateRef$covariateName))
+drugName <- gsub(".*: ", "", drugName)
+drugName<-noquote(drugName)
+write.csv(drugName, file="dat/drugName.csv")
 #
 # drugCovariates <- FeatureExtraction::getDbCovariateData(connectionDetails = connectionDetails,
 #                                                         cdmDatabaseSchema = cdmDatabaseSchema,
