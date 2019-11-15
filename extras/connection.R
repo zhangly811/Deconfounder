@@ -22,8 +22,11 @@
 options(fftempdir = "tmp/")
 memory.limit(size=1024*12)
 
-connectionDetails = DatabaseConnector::createConnectionDetails(dbms = "sql server",
-                                                               server = "omop.dbmi.columbia.edu")
+connectionDetails = DatabaseConnector::createConnectionDetails(dbms = "postgresql",
+                                                               server = "localhost/postgres",
+                                                               port="5555",
+                                                               user="lz2629",
+                                                               password="ZHcar1020.")
 connection = DatabaseConnector::connect(connectionDetails)
 
 cdmDatabaseSchema = "ohdsi_cumc_deid_pending.dbo"
