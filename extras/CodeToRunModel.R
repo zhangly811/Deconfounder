@@ -17,25 +17,49 @@
 
 # install.packages("qlcMatrix")
 
-drugSparseData <- Matrix::readMM("dat/drugSparseMat.txt")
-drugSparseData <- drugSparseData*1
+
+# load data
+drug <- Matrix::readMM(file="dat/drugSparseMat.txt")
+drug <- drug*1
+meas <- Matrix::readMM(file="dat/measChangeSparseMat.txt")
+meas <- meas*1
+measIdx <- Matrix::readMM(file="dat/measChangeIndexMat.txt")
 drugName <- read.csv("dat/drugName.csv", row.names = 1)
-
-corMat <-  qlcMatrix::corSparse(drugSparseData)
-corMat[!lower.tri(corMat)] <- NA
-condition <- which(abs(corMat)>=0.6, arr.ind = T)
+measName <- read.csv("dat/measName.csv", row.names = 1)
+# find highly correlated drug pairs
+corMat <-  qlcMatrix::corSparse(drug)
+corMat[!lower.tri(corMat)] <- 0
+condition <- which(abs(corMat)>=0.8, arr.ind = T)
+drugToRemove<-unique(condition[,2])
 corDrug <- data.frame(drugName[condition[,1],], drugName[condition[,2],])
+colnames(corDrug)<- c("DrugName1", "DrugName2")
+# remove highly correlated drugs
+drug <- drug[, -c(drugToRemove)]
+drugName <- drugName[-c(drugToRemove)]
 
-drugSparseData <- drugSparseData[,!apply(corMat,2,function(x) any(abs(x) >= 0.6))] ##TODO: LEFT HERE
+# normalize measurements
+meas@x <- meas@x / rep.int(Matrix::colSums(meas), diff(meas@p))
 
-#plot correlation matrix
-melted_cormat <- reshape2::melt(corMat)
-ggplot2::ggplot(data = melted_cormat, aes(Var2, Var1, fill = value))+
-  geom_tile(color = "white")+
-  scale_fill_gradient2(low = "blue", high = "red", mid = "white",
-                       midpoint = 0, limit = c(-1,1), space = "Lab",
-                       name="Pearson\nCorrelation") +
-  theme_minimal()+
-  theme(axis.text.x = element_text(angle = 45, vjust = 1,
-                                   size = 12, hjust = 1))+
-  coord_fixed()
+numDrug <- ncol(drug)
+numMeas <- ncol(meas)
+lambdas <- 10^seq(3, -2, by = -.1)
+coefMat <- matrix(data = NA, nrow = numDrug, ncol = numMeas)
+res <- matrix(data = NA, nrow = 2, ncol = numMeas)
+for (outcome in seq(numMeas)){
+  y <- meas[measIdx[,outcome], outcome]
+  x <- drug[measIdx[,outcome],]
+  res[1,outcome]<-length(y)
+  if (length(y)>5*numDrug){
+    cv_fit <- glmnet::cv.glmnet(x, y,
+                                alpha = 0, lambda = lambdas,
+                                nfolds=5)
+    res[2,outcome] <- cv_fit$lambda.min
+    coefMat[,outcome] <- coef(cv_fit, s = "lambda.min")[1:numDrug+1]
+  }
+}
+
+coefMat<-coefMat[,!colSums(!is.finite(coefMat))]
+heatmap(coefMat, xlab = "Measurement", ylab = "Drug")
+measCorMat <- cor(coefMat)
+heatmap(measCorMat)
+

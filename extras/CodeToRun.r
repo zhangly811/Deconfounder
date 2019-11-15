@@ -1,6 +1,6 @@
 # Copyright 2019 Observational Health Data Sciences and Informatics
 #
-# This file is part of MvConfounder
+# This file is part of MvDeconfounder
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 # devtools::install_github("ohdsi/FeatureExtraction")
 # devtools::install_github("ohdsi/PatientLevelPrediction")''
 
-options(fftempdir = tempdir())
+options(fftempdir = "tmp/")
 memory.limit(size=1024*12)
 
 connectionDetails = DatabaseConnector::createConnectionDetails(dbms = "sql server",
@@ -33,25 +33,27 @@ targetCohortId = 1
 
 outputFolder <- "C:/data/MvConfounderV1T1"
 
+ingredientList <- readRDS(file="dat/ingredientList.rds")
+ingredientConceptIds = ingredientList[[1]]$conceptId
+measurementList <- readRDS(file="dat/measurementList.rds")
+measurementConceptIds = measurementList[[1]]$conceptId
 
-
-mVdData<-generateMvdData(connection=connection,
+mVdData<-MvDeconfounder::generateMvdData(connection=connection,
                           cdmDatabaseSchema=cdmDatabaseSchema,
-                          oracleTempSchema = NULL,
-                          vocabularyDatabaseSchema = cdmDatabaseSchema,
+                          oracleTempSchema=NULL,
+                          vocabularyDatabaseSchema =cdmDatabaseSchema,
                           cohortDatabaseSchema=cohortDatabaseSchema,
                           targetCohortTable=targetCohortTable,
                           minimumProportion = 0.001,
                           targetDrugTable = 'DRUG_ERA',
-                          ingredientConceptIds=c(967823, 1124957, 1125315, 1177480),
-                          measurementConceptIds=as.numeric(c(3013682, 3016723, 3023103, 3015632, 3014576, 3019550, 3006923, 3013721, 3035995, 3006906, 3024128, 3024561, 33000483))
-,
+                          ingredientConceptIds=ingredientConceptIds,
+                          measurementConceptIds=measurementConceptIds,
                           createTargetCohort = F,
                           labWindow = 35,
                           targetCohortId=targetCohortId,
                           temporalStartDays = c(-35,1),
                           temporalEndDays   = c(-1,35),
-                          sampleSize = 100,
+                          sampleSize = NULL,
                           outputFolder)
 
 
@@ -62,18 +64,16 @@ mVdData<-generateMvdData(connection=connection,
 #                                                    minimumProportion = 0.001,
 #                                                    targetDrugTable = 'DRUG_ERA')
 # saveRDS(ingredientList, file="ingredientList.rds")
-ingredientList <- readRDS(file="dat/ingredientList.rds")
-ingredientConceptIds = ingredientList[[1]]$conceptId
-# ingredientConceptIds = as.numeric(c(967823, 1124957, 1125315, 1177480))
+# ingredientList <- readRDS(file="dat/ingredientList.rds")
+# ingredientConceptIds = ingredientList[[1]]$conceptId
 
 # measurementList<-MvDeconfounder::listingMeasurements(connection,
 #                                                     cdmDatabaseSchema,
 #                                                     vocabularyDatabaseSchema = cdmDatabaseSchema,
 #                                                     minimumProportion = 0.001)
 # saveRDS(measurementList, file="measurementList.rds")
-measurementList <- readRDS(file="dat/measurementList.rds")
-measurementConceptIds = measurementList[[1]]$conceptId
-# measurementConceptIds = as.numeric(c(3013682, 3016723, 3023103, 3015632, 3014576, 3019550, 3006923, 3013721, 3035995, 3006906, 3024128, 3024561, 33000483))
+# measurementList <- readRDS(file="dat/measurementList.rds")
+# measurementConceptIds = measurementList[[1]]$conceptId
 
 
 # MvDeconfounder::createCohorts(connection,
