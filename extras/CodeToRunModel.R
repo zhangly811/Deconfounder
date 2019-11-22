@@ -16,16 +16,21 @@
 # memory.limit(size=10000)
 
 # install.packages("qlcMatrix")
-
+# install.packages("d3heatmap")
 
 # load data
-drug <- Matrix::readMM(file="dat/drugSparseMat.txt")
+inputFolder <- "dat/20191116Complete"
+outputFolder <- "res/20191118Complete"
+drug <- Matrix::readMM(file=file.path(inputFolder, "drugSparseMat.txt"))
 drug <- drug*1
-meas <- Matrix::readMM(file="dat/measChangeSparseMat.txt")
+meas <- Matrix::readMM(file=file.path(inputFolder, "measChangeSparseMat.txt"))
 meas <- meas*1
-measIdx <- Matrix::readMM(file="dat/measChangeIndexMat.txt")
-drugName <- read.csv("dat/drugName.csv", row.names = 1)
-measName <- read.csv("dat/measName.csv", row.names = 1)
+measIdx <- Matrix::readMM(file=file.path(inputFolder, "measChangeIndexMat.txt"))
+drugName <- as.character(read.csv(file=file.path(inputFolder, "drugName.csv"), row.names = 1)$V1)
+measName <- as.character(read.csv(file=file.path(inputFolder, "measName.csv"), row.names = 1)$V1)
+measName <- gsub(" in .*", "", measName)
+measName <- gsub("\\s*\\([^\\)]+\\)","", measName)
+measName <- gsub("\\s*\\[[^\\)]+\\]","", measName)
 # find highly correlated drug pairs
 corMat <-  qlcMatrix::corSparse(drug)
 corMat[!lower.tri(corMat)] <- 0
@@ -42,12 +47,16 @@ meas@x <- meas@x / rep.int(Matrix::colSums(meas), diff(meas@p))
 
 numDrug <- ncol(drug)
 numMeas <- ncol(meas)
-lambdas <- 10^seq(3, -2, by = -.1)
+lambdas <- 10^seq(2, -2, by = -.1)
 coefMat <- matrix(data = NA, nrow = numDrug, ncol = numMeas)
+rownames(coefMat) <- drugName
+colnames(coefMat) <- measName
 res <- matrix(data = NA, nrow = 2, ncol = numMeas)
 for (outcome in seq(numMeas)){
-  y <- meas[measIdx[,outcome], outcome]
-  x <- drug[measIdx[,outcome],]
+  print(paste0("Running outcome ", outcome))
+  rowIdx <- which(meas[,outcome]!=0)
+  y <- meas[rowIdx, outcome]
+  x <- drug[rowIdx,]
   res[1,outcome]<-length(y)
   if (length(y)>5*numDrug){
     cv_fit <- glmnet::cv.glmnet(x, y,
@@ -55,11 +64,13 @@ for (outcome in seq(numMeas)){
                                 nfolds=5)
     res[2,outcome] <- cv_fit$lambda.min
     coefMat[,outcome] <- coef(cv_fit, s = "lambda.min")[1:numDrug+1]
+    write.csv(coefMat, file=file.path(outputFolder, "coefMat.csv"))
   }
 }
-
+coefMat <- as.matrix(read.csv(file=file.path(outputFolder, "coefMat.csv"), row.names = 1))
 coefMat<-coefMat[,!colSums(!is.finite(coefMat))]
-heatmap(coefMat, xlab = "Measurement", ylab = "Drug")
 measCorMat <- cor(coefMat)
-heatmap(measCorMat)
+drugCorMat <- cor(t(coefMat))
 
+d3heatmap::d3heatmap(measCorMat, symm = TRUE)
+d3heatmap::d3heatmap(drugCorMat, symm = TRUE)

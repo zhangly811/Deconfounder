@@ -14,12 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# devtools::install_github("ohdsi/SqlRender")
-# devtools::install_github("ohdsi/DatabaseConnector")
-# devtools::install_github("ohdsi/FeatureExtraction")
-# devtools::install_github("ohdsi/PatientLevelPrediction")''
-
-options(fftempdir = "tmp/")
+# Install devtools from CRAN
+install.packages("devtools")
+devtools::install_github("ohdsi/SqlRender")
+devtools::install_github("ohdsi/DatabaseConnector")
+devtools::install_github("ohdsi/FeatureExtraction")
+devtools::install_github("ohdsi/PatientLevelPrediction")
+options(fftempdir = "C:/tmp")
 memory.limit(size=1024*12)
 
 connectionDetails = DatabaseConnector::createConnectionDetails(dbms = "sql server",
@@ -31,7 +32,7 @@ cohortDatabaseSchema = "ohdsi_cumc_deid_pending.results"
 targetCohortTable = "MVDECONFOUNDER_COHORT"
 targetCohortId = 1
 
-outputFolder <- "C:/data/MvConfounderV1T1"
+outputFolder <- "dat/20191116Complete"
 
 ingredientList <- readRDS(file="dat/ingredientList.rds")
 ingredientConceptIds = ingredientList[[1]]$conceptId
@@ -49,6 +50,8 @@ mVdData<-MvDeconfounder::generateMvdData(connection=connection,
                           ingredientConceptIds=ingredientConceptIds,
                           measurementConceptIds=measurementConceptIds,
                           createTargetCohort = F,
+                          extractDrugFeature = T,
+                          extractMeasFeature = F,
                           labWindow = 35,
                           targetCohortId=targetCohortId,
                           temporalStartDays = c(-35,1),
@@ -129,7 +132,7 @@ plpData.meas <- PatientLevelPrediction::getPlpData(connectionDetails = connectio
                                                    sampleSize = 1e+5#NULL
 )
 PatientLevelPrediction::savePlpData(plpData.meas,file='dat/plpData_meas_sampleSize1e5', overwrite=TRUE)
-plpData.meas <- PatientLevelPrediction::loadPlpData(file='dat/plpData_meas_sampleSize1e5')
+plpData.meas <- PatientLevelPrediction::loadPlpData(file='dat/20191116Complete/plpData.meas')
 
 
 plpData.drug <- PatientLevelPrediction::getPlpData(connectionDetails = connectionDetails,
@@ -144,7 +147,7 @@ plpData.drug <- PatientLevelPrediction::getPlpData(connectionDetails = connectio
                                                    sampleSize = 1e+5#NULL
 )
 PatientLevelPrediction::savePlpData(plpData.drug,file='dat/plpData_drug_sampleSize1e5', overwrite=TRUE)
-plpData.drug <- PatientLevelPrediction::loadPlpData(file='dat/plpData_drug_sampleSize1e5')
+plpData.drug <- PatientLevelPrediction::loadPlpData(file='dat/20191116Complete/plpData.drug')
 
 length(unique(plpData.meas$cohorts$subjectId))
 length(unique(plpData.drug$cohorts$subjectId))
@@ -156,10 +159,10 @@ measMappedCov<-MapCovariates (covariates=plpData.meas$covariates,
                               population=plpData.meas$cohorts,
                               map=NULL)
 
-preMeasSparseMat <- toSparseM(plpData.meas, map=measMappedCov$map, timeId=1)
+preMeasSparseMat <- toSparseM(plpData=plpData.meas, map=measMappedCov$map, timeId=1)
 postMeasSparseMat <- toSparseM(plpData.meas, map=measMappedCov$map, timeId=2)
 measChangeSparseMat <- postMeasSparseMat$data - preMeasSparseMat$data
-measChangeIndexMat <- preMeasSparseMat$index + preMeasSparseMat$index
+measChangeIndexMat <- preMeasSparseMat$index + postMeasSparseMat$index
 measChangeIndexMat[measChangeIndexMat!=2]<-0
 measChangeIndexMat[measChangeIndexMat==2]<-1
 # measChangeSparseMat[indexMat==0]<-NA

@@ -44,16 +44,17 @@ toSparseM <- function(plpData,
 
   covref <- plpData$covariateRef#ff::clone(plpData$covariateRef)
 
-  cov<-ff::as.ram(cov)
+  # cov<-ff::as.ram(cov)
+  map <-ff::as.ffdf(map)
   cov<-merge(cov,map, by.x="covariateId", by.y = "oldIds", all =FALSE)
 
-  data <- Matrix::sparseMatrix(i=cov$rowId,
-                               j=cov$newIds,
-                               x=cov$covariateValue,
+  data <- Matrix::sparseMatrix(i=ff::as.ram(cov$rowId),
+                               j=ff::as.ram(cov$newIds),
+                               x=ff::as.ram(cov$covariateValue),
                                dims=matrixDim) # edit this to max(map$newIds)
 
-  indexMat <- Matrix::sparseMatrix(i=cov$rowId,
-                               j=cov$newIds,
+  indexMat <- Matrix::sparseMatrix(i=ff::as.ram(cov$rowId),
+                               j=ff::as.ram(cov$newIds),
                                x=T,
                                dims=matrixDim) # edit this to max(map$newIds)
 

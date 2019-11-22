@@ -27,6 +27,8 @@ generateMvdData<-function(connection,
                           ingredientConceptIds=NULL,
                           measurementConceptIds=NULL,
                           createTargetCohort = T,
+                          extractDrugFeature = T,
+                          extractMeasFeature = T,
                           labWindow = 35,
                           targetCohortId=NULL,
                           temporalStartDays = c(-35,1),
@@ -69,7 +71,7 @@ generateMvdData<-function(connection,
       ParallelLogger::logWarn("Warning: target Cohort Id was set as 9999 automatically")
       targetCohortId <- 9999
     }
-    ParallelLogger::logInfo("The cohorts are beinggenerated")
+    ParallelLogger::logInfo("The cohorts are being generated")
 
     MvDeconfounder::createMvdCohorts(connection=connection,
                                      cdmDatabaseSchema=cdmDatabaseSchema,
@@ -100,85 +102,102 @@ generateMvdData<-function(connection,
 
   # Create unique id: rowId
   #cohort$rowId <- seq(nrow(cohort))
-
   # get features
-  measCovariateSettings <- FeatureExtraction::createTemporalCovariateSettings(useMeasurementValue = TRUE,
-                                                                              temporalStartDays = temporalStartDays,
-                                                                              temporalEndDays   = temporalEndDays,
-                                                                              includedCovariateConceptIds = measurementConceptIds
-  )
+  if (extractMeasFeature){
+    measCovariateSettings <- FeatureExtraction::createTemporalCovariateSettings(useMeasurementValue = TRUE,
+                                                                                temporalStartDays = temporalStartDays,
+                                                                                temporalEndDays   = temporalEndDays,
+                                                                                includedCovariateConceptIds = measurementConceptIds
+    )
 
-  ParallelLogger::logInfo("Measurement data is generated")
-  plpData.meas <- PatientLevelPrediction::getPlpData(connectionDetails = connectionDetails,
-                                                     cdmDatabaseSchema = cdmDatabaseSchema,
-                                                     cohortDatabaseSchema = cohortDatabaseSchema,
-                                                     cohortTable = targetCohortTable,
-                                                     cohortId = targetCohortId,
-                                                     covariateSettings = measCovariateSettings,
-                                                     outcomeDatabaseSchema = cohortDatabaseSchema,
-                                                     outcomeTable = targetCohortTable,
-                                                     outcomeIds = targetCohortId,
-                                                     sampleSize = sampleSize
-  )
-  PatientLevelPrediction::savePlpData(plpData.meas,file=file.path(outputFolder,'plpData.meas'), overwrite=TRUE)
-  ParallelLogger::logInfo("Measurement data was saved at ",file.path(outputFolder,'plpData.meas'))
+    ParallelLogger::logInfo("Start generating measurement data ...")
+    plpData.meas <- PatientLevelPrediction::getPlpData(connectionDetails = connectionDetails,
+                                                       cdmDatabaseSchema = cdmDatabaseSchema,
+                                                       cohortDatabaseSchema = cohortDatabaseSchema,
+                                                       cohortTable = targetCohortTable,
+                                                       cohortId = targetCohortId,
+                                                       covariateSettings = measCovariateSettings,
+                                                       outcomeDatabaseSchema = cohortDatabaseSchema,
+                                                       outcomeTable = targetCohortTable,
+                                                       outcomeIds = targetCohortId,
+                                                       sampleSize = sampleSize
+    )
+    PatientLevelPrediction::savePlpData(plpData.meas, file=file.path(outputFolder, 'plpData.meas'), overwrite=TRUE)
+    ParallelLogger::logInfo("Measurement data was saved at ",file.path(outputFolder,'plpData.meas'))
 
-  ParallelLogger::logInfo("Drug data is generated")
-  drugCovariateSettings <- FeatureExtraction::createCovariateSettings(useDrugEraShortTerm =TRUE,
-                                                                      shortTermStartDays = 0,
-                                                                      endDays = 0,
-                                                                      includedCovariateConceptIds = ingredientConceptIds
-  )
+    #create sparse measurement matrices
+    ##seperate two timeId
+    measMappedCov<-MapCovariates (covariates=plpData.meas$covariates,
+                                  covariateRef=plpData.meas$covariateRef,
+                                  population=plpData.meas$cohorts,
+                                  map=NULL)
 
-  plpData.drug <- PatientLevelPrediction::getPlpData(connectionDetails = connectionDetails,
-                                                     cdmDatabaseSchema = cdmDatabaseSchema,
-                                                     cohortDatabaseSchema = cohortDatabaseSchema,
-                                                     cohortTable = targetCohortTable,
-                                                     cohortId = targetCohortId,
-                                                     covariateSettings = drugCovariateSettings,
-                                                     outcomeDatabaseSchema = cohortDatabaseSchema,
-                                                     outcomeTable = targetCohortTable,
-                                                     outcomeIds = targetCohortId,
-                                                     sampleSize = sampleSize
-  )
-  PatientLevelPrediction::savePlpData(plpData.drug, file=file.path(outputFolder,'plpData.drug'), overwrite=TRUE)
-  ParallelLogger::logInfo("Drug data was saved at ",file.path(outputFolder,'plpData.drug'))
+    preMeasSparseMat <- toSparseM(plpData.meas, map=measMappedCov$map, timeId=1)
+    postMeasSparseMat <- toSparseM(plpData.meas, map=measMappedCov$map, timeId=2)
+    measChangeSparseMat <- postMeasSparseMat$data - preMeasSparseMat$data
+    measChangeIndexMat <- preMeasSparseMat$index + postMeasSparseMat$index
 
-  #create sparse measurement matrices
-  ##seperate two timeId
-  measMappedCov<-MapCovariates (covariates=plpData.meas$covariates,
-                                covariateRef=plpData.meas$covariateRef,
-                                population=plpData.meas$cohorts,
-                                map=NULL)
+    measChangeIndexMat[measChangeIndexMat!=2]<-0
+    measChangeIndexMat[measChangeIndexMat==2]<-1
 
-  preMeasSparseMat <- toSparseM(plpData.meas, map=measMappedCov$map, timeId=1)
-  postMeasSparseMat <- toSparseM(plpData.meas, map=measMappedCov$map, timeId=2)
-  measChangeSparseMat <- postMeasSparseMat$data - preMeasSparseMat$data
-  measChangeIndexMat <- preMeasSparseMat$index + preMeasSparseMat$index
+    # measChangeSparseMat[indexMat==0]<-NA
+    Matrix::writeMM(measChangeSparseMat, file=file.path(outputFolder,"measChangeSparseMat.txt"))
+    Matrix::writeMM(measChangeIndexMat, file=file.path(outputFolder,"measChangeIndexMat.txt"))
+    #save measurement name to a csv file
+    measName <- as.matrix(ff::as.ram(plpData.meas$covariateRef$covariateName))
+    measName <- gsub(".*: ", "", measName)
+    measName<-noquote(measName)
+    write.csv(measName, file=file.path(outputFolder, "measName.csv"))
 
-  measChangeIndexMat[measChangeIndexMat!=2]<-0
-  measChangeIndexMat[measChangeIndexMat==2]<-1
+  } else {
+    ParallelLogger::logInfo("Measurement data were previously generated.")
+  }
 
-  # measChangeSparseMat[indexMat==0]<-NA
-  Matrix::writeMM(measChangeSparseMat, file=file.path(outputFolder,"measChangeSparseMat.txt"))
-  Matrix::writeMM(measChangeIndexMat, file=file.path(outputFolder,"measChangeIndexMat.txt"))
+  if (extractDrugFeature){
+    ParallelLogger::logInfo("Start generating drug data ...")
+    drugCovariateSettings <- FeatureExtraction::createCovariateSettings(useDrugEraShortTerm =TRUE,
+                                                                        shortTermStartDays = 0,
+                                                                        endDays = 0,
+                                                                        includedCovariateConceptIds = ingredientConceptIds
+    )
 
-  #create sparse drug matrix
-  drugMappedCov<-MapCovariates (covariates=plpData.drug$covariates,
-                                covariateRef=plpData.drug$covariateRef,
-                                population=plpData.drug$cohorts,
-                                map=NULL)
-  drugSparseMat <- toSparseM(plpData.drug, map=drugMappedCov$map)
-  Matrix::writeMM(drugSparseMat$data, file="dat/drugSparseMat.txt")
+    plpData.drug <- PatientLevelPrediction::getPlpData(connectionDetails = connectionDetails,
+                                                       cdmDatabaseSchema = cdmDatabaseSchema,
+                                                       cohortDatabaseSchema = cohortDatabaseSchema,
+                                                       cohortTable = targetCohortTable,
+                                                       cohortId = targetCohortId,
+                                                       covariateSettings = drugCovariateSettings,
+                                                       outcomeDatabaseSchema = cohortDatabaseSchema,
+                                                       outcomeTable = targetCohortTable,
+                                                       outcomeIds = targetCohortId,
+                                                       sampleSize = sampleSize
+    )
+    PatientLevelPrediction::savePlpData(plpData.drug, file=file.path(outputFolder,'plpData.drug'), overwrite=TRUE)
+    ParallelLogger::logInfo("Drug data were saved at ",file.path(outputFolder,'plpData.drug'))
 
 
-  return(
-    list(
-      #plpDataMeas=plpData.meas,
-      #plpDataDrug = plpData.drug,
-      measChangeMatrix = measChangeSparseMat,
-      measChangeIndexMatrix = measChangeIndexMat,
-      drugMatrix = drugSparseMat)
-  )
+    #create sparse drug matrix
+    drugMappedCov<-MapCovariates (covariates=plpData.drug$covariates,
+                                  covariateRef=plpData.drug$covariateRef,
+                                  population=plpData.drug$cohorts,
+                                  map=NULL)
+    drugSparseMat <- toSparseM(plpData.drug, map=drugMappedCov$map)
+    Matrix::writeMM(drugSparseMat$data, file=file.path(outputFolder, "drugSparseMat.txt"))
+    #save drug names to a csv file
+    drugName <- as.matrix(ff::as.ram(drugSparseMat$covariateRef$covariateName))
+    drugName <- gsub(".*: ", "", drugName)
+    drugName<-noquote(drugName)
+    write.csv(drugName, file=file.path(outputFolder, "drugName.csv"))
+  } else {
+    ParallelLogger::logInfo("Drug data were previously generated.")
+  }
+  # return(
+  #   list(
+  #     #plpDataMeas=plpData.meas,
+  #     #plpDataDrug = plpData.drug,
+  #     measChangeMatrix = measChangeSparseMat,
+  #     measChangeIndexMatrix = measChangeIndexMat,
+  #     drugMatrix = drugSparseMat)
+  # )
 
 }
