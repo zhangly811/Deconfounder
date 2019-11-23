@@ -69,6 +69,8 @@ for (outcome in seq(numMeas)){
 }
 coefMat <- as.matrix(read.csv(file=file.path(outputFolder, "coefMat.csv"), row.names = 1))
 coefMat<-coefMat[,!colSums(!is.finite(coefMat))]
+drugName <- rownames(coefMat)
+measName <- colnames(coefMat)
 measCorMat <- cor(coefMat)
 drugCorMat <- cor(t(coefMat))
 
