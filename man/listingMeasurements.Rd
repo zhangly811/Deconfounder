@@ -4,9 +4,12 @@
 \alias{listingMeasurements}
 \title{Generate list of concept Ids of interest}
 \usage{
-listingMeasurements(connection, cdmDatabaseSchema,
+listingMeasurements(
+  connection,
+  cdmDatabaseSchema,
   vocabularyDatabaseSchema = cdmDatabaseSchema,
-  minimumProportion = 0.01)
+  minimumProportion = 0.01
+)
 }
 \arguments{
 \item{connection}{Name of local folder where the results were generated; make sure to use forward slashes

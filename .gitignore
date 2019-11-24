@@ -5,8 +5,9 @@
 
 # Session Data files
 .RData
-# Any data
+# Any data or results
 dat/
+res/
 # tmp folder
 tmp/
 

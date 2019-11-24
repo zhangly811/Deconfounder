@@ -66,3 +66,11 @@ toSparseM <- function(plpData,
   return(result)
 }
 
+findCollinearFeatures <- function(drugSparseList,
+                                    threshold=0.8){
+  corMat <-  qlcMatrix::corSparse(drugSparseList$data)
+  corMat[!lower.tri(corMat)] <- 0
+  corPairs <- which(abs(corMat)>=threshold, arr.ind = T)
+  return(corPairs)
+}
+

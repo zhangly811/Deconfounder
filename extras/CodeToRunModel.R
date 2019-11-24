@@ -21,26 +21,13 @@
 # load data
 inputFolder <- "dat/20191116Complete"
 outputFolder <- "res/20191118Complete"
-drug <- Matrix::readMM(file=file.path(inputFolder, "drugSparseMat.txt"))
+drugSparseMat <- Matrix::readMM(file=file.path(inputFolder, "drugSparseMat.txt"))
 drug <- drug*1
 meas <- Matrix::readMM(file=file.path(inputFolder, "measChangeSparseMat.txt"))
 meas <- meas*1
 measIdx <- Matrix::readMM(file=file.path(inputFolder, "measChangeIndexMat.txt"))
-drugName <- as.character(read.csv(file=file.path(inputFolder, "drugName.csv"), row.names = 1)$V1)
-measName <- as.character(read.csv(file=file.path(inputFolder, "measName.csv"), row.names = 1)$V1)
-measName <- gsub(" in .*", "", measName)
-measName <- gsub("\\s*\\([^\\)]+\\)","", measName)
-measName <- gsub("\\s*\\[[^\\)]+\\]","", measName)
-# find highly correlated drug pairs
-corMat <-  qlcMatrix::corSparse(drug)
-corMat[!lower.tri(corMat)] <- 0
-condition <- which(abs(corMat)>=0.8, arr.ind = T)
-drugToRemove<-unique(condition[,2])
-corDrug <- data.frame(drugName[condition[,1],], drugName[condition[,2],])
-colnames(corDrug)<- c("DrugName1", "DrugName2")
-# remove highly correlated drugs
-drug <- drug[, -c(drugToRemove)]
-drugName <- drugName[-c(drugToRemove)]
+drugName <- as.character(read.csv(file=file.path(inputFolder, "drugName.csv"), row.names = 1)[,1])
+measName <- as.character(read.csv(file=file.path(inputFolder, "measName.csv"), row.names = 1)[,1])
 
 # normalize measurements
 meas@x <- meas@x / rep.int(Matrix::colSums(meas), diff(meas@p))
