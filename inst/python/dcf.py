@@ -61,7 +61,7 @@ parser.add_argument('-cp', '--causalprop', \
 parser.add_argument('-nitr', '--niter', \
     type=int, default=20000) #20000
 parser.add_argument('-data_dir', '--data_dir', \
-    type=str, default="/phi/proj/deconfounder/multivariate_medical_deconfounder/dat/1FullCohort")
+    type=str, default="/phi/proj/deconfounder/multivariate_medical_deconfounder/dat/PackageTest")
 parser.add_argument('-out_dir', '--out_dir', \
     type=str, default="/phi/proj/deconfounder/multivariate_medical_deconfounder/res")
 
