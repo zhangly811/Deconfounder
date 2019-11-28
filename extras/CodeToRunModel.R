@@ -61,5 +61,7 @@ measName <- colnames(coefMat)
 measCorMat <- cor(coefMat)
 drugCorMat <- cor(t(coefMat))
 
-d3heatmap::d3heatmap(measCorMat, symm = TRUE)
+d3heatmap::d3heatmap(measCorMat, symm = TRUE)ê
 d3heatmap::d3heatmap(drugCorMat, symm = TRUE)
+d3heatmap::d3heatmap(coefMat)
+
