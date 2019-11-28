@@ -14,6 +14,7 @@ plt.style.use('ggplot')
 import numpy as np
 import numpy.random as npr
 import pandas as pd
+import scipy.io as sio
 import math
 import os
 from datetime import *
@@ -31,6 +32,19 @@ from scipy.special import expit, logit
 from sklearn.metrics import r2_score, accuracy_score
 from sklearn.model_selection import GridSearchCV, cross_val_score, train_test_split
 
+def load_data(path, data_filename, create_mask = True):
+    path = os.path.expanduser(path)
+    filepath = os.path.join(path, data_filename)
+    if not os.path.exists(filepath):
+        raise FileNotFoundError
+
+    data = sio.mmread(filepath)
+    if create_mask:
+        row, col = data.nonzero()
+        mask = scipy.sparse.csr_matrix((np.ones((row.shape[0])), (row, col)), dtype=int).toarray()
+        return data.toarray(), mask
+    else:
+        return data.toarray()
 
 def next_batch(x_train, M):
     # subsample M columns
@@ -38,7 +52,14 @@ def next_batch(x_train, M):
     idx_batch = np.random.choice(N, M)
     return x_train[:, idx_batch], idx_batch
 
+def sim_single_outcome(G, n_causes, causalprop=0.05, bin_scale=1):
+    betas = npr.normal(0, 1., size=n_causes)
+    causal_snps = int(causalprop*n_causes)
+    betas[causal_snps:] = 0.0
 
+    y = G.dot(betas)
+
+    return y, betas
 
 def sim_genes_BN(Fs, ps, n_hapmapgenes, n_causes, n_units, D=3):
     idx = npr.randint(n_hapmapgenes, size = n_causes)
@@ -168,12 +189,14 @@ def holdout_data(X):
     # randomly holdout some entries of X
     num_datapoints, data_dim = X.shape
 
-    holdout_portion = 0.2
+    holdout_portion = 0.5
     n_holdout = int(holdout_portion * num_datapoints * data_dim)
 
     holdout_row = np.random.randint(num_datapoints, size=n_holdout)
     holdout_col = np.random.randint(data_dim, size=n_holdout)
-    holdout_mask = (sparse.coo_matrix((np.ones(n_holdout),                             (holdout_row, holdout_col)),                             shape = X.shape)).toarray()
+    holdout_mask = (sparse.coo_matrix((np.ones(n_holdout),
+                                       (holdout_row, holdout_col)),
+                                      shape = X.shape)).toarray()
     holdout_mask = np.minimum(holdout_mask, np.ones(X.shape))
     holdout_mask = np.float32(holdout_mask)
 
@@ -421,7 +444,7 @@ def pmf_predictive_check(x_train, x_vad, holdout_mask, x_post, V_post, U_post,n_
 
 
 
-def fit_def(x_train, K=[100,30,5], M=100, prior_a=0.1, prior_b=0.3, shape=0.1, q='lognormal', optimizer=tf.train.RMSPropOptimizer(1e-4), n_iter=20000):
+def fit_def(x_train, K=[100,30,5], M=100, prior_a=0.1, prior_b=0.3, shape=0.1, n_iter, q='lognormal', optimizer=tf.train.RMSPropOptimizer(1e-4)):
 
     # we default to RMSProp here. but we can also use Adam (lr=1e-2).
     # A successful training of def usually means a negative ELBO. In
@@ -437,8 +460,7 @@ def fit_def(x_train, K=[100,30,5], M=100, prior_a=0.1, prior_b=0.3, shape=0.1, q
 
     # the same trick applies to all other factor models.
 
-    # subsample on rows
-    N, D = x_train.shape # number of documents, vocabulary size
+    N, D = x_train.shape # num_causes, num_datapoints
     logdir = '~/log/def/'
     logdir = os.path.expanduser(logdir)
     tf.reset_default_graph()
@@ -455,7 +477,7 @@ def fit_def(x_train, K=[100,30,5], M=100, prior_a=0.1, prior_b=0.3, shape=0.1, q
     z3 = Gamma(prior_a, prior_b, sample_shape=[N, K[2]])
     z2 = Gamma(shape, shape / tf.matmul(z3, W2))
     z1 = Gamma(shape, shape / tf.matmul(z2, W1))
-    x = Poisson(tf.matmul(z1, W0))
+    x = Poisson(tf.matmul(z1, W0)) # N by M
 
 
     # INFERENCE
@@ -584,7 +606,7 @@ def fit_def(x_train, K=[100,30,5], M=100, prior_a=0.1, prior_b=0.3, shape=0.1, q
             min_z1_post = z1_post
             min_W0_post = W0_post
             min_x_post = x_post
-            min_def_x_post_np = def_x_post_np.copy()
+            min_def_x_post_np = def_x_post_np.T.copy()
             min_def_z_post_np = W0_post.eval().T.copy()
 
         cur_change = (nll - min_nll)/np.abs(min_nll)
@@ -597,7 +619,7 @@ def fit_def(x_train, K=[100,30,5], M=100, prior_a=0.1, prior_b=0.3, shape=0.1, q
             if cur_change > 0:
                 break
 
-        prev_change = cur_change
+        prev_change = cur_change.copy()
 
         # if cur_change > 0.1:
             # if nll < 0:
@@ -617,10 +639,10 @@ def fit_def(x_train, K=[100,30,5], M=100, prior_a=0.1, prior_b=0.3, shape=0.1, q
     z1_post = Gamma(shape, shape / tf.matmul(z2_post, W1))
     W0_post = pointmass_q(qW0all.shape, qW0all)
     x_post = Poisson(tf.matmul(z1_post, W0_post))
-    def_x_post_np = x_post.mean().eval()
+    def_x_post_np = x_post.mean().eval().T
     def_z_post_np = W0_post.eval().T
 
-    return x_post, z3_post, z2_post, z1_post, W0_post, min_def_x_post_np, min_def_z_post_np
+    return x_post, z3_post, z2_post, z1_post, W0_post, def_x_post_np, def_z_post_np
 
 
 
