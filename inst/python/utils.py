@@ -14,6 +14,7 @@ plt.style.use('ggplot')
 import numpy as np
 import numpy.random as npr
 import pandas as pd
+import scipy
 import scipy.io as sio
 import math
 import os
@@ -159,30 +160,82 @@ def sim_single_traits(lambdas, G, a, b, causalprop=0.05, bin_scale=1):
     return y, y_bin, true_betas, true_lambdas
     
 
-def fit_outcome_linear(X, y, true_betas, n_causes, CV=False, verbose=False):
+def fit_outcome_linear(X, y, n_causes, true_betas=None, CV=False, verbose=False):
     if CV == True:
         linear_reg = regression_CV(X, y, outtype="linear", verbose=verbose)
     else:
         linear_reg = regression_noCV(X, y, outtype="linear", verbose=verbose)
-    
-    linear_rmse = np.sqrt(((true_betas - linear_reg.coef_[:n_causes])**2).mean())
-    trivial_rmse = np.sqrt(((true_betas - 0)**2).mean())
-    if verbose:
-        print("linear outcome rmse", linear_rmse, "\nlinear - trivial", linear_rmse - trivial_rmse)
-    return linear_reg, linear_rmse
+    if true_betas!= None:
+        linear_rmse = np.sqrt(((true_betas - linear_reg.coef_[:n_causes])**2).mean())
+        trivial_rmse = np.sqrt(((true_betas - 0)**2).mean())
+        if verbose:
+            print("linear outcome rmse", linear_rmse, "\nlinear - trivial", linear_rmse - trivial_rmse)
+        return linear_reg, linear_rmse
+    else:
+        return linear_reg
 
 
-def fit_outcome_logistic(X, y_bin, true_betas, n_causes, CV=False, verbose=False):
+def fit_outcome_logistic(X, y_bin, n_causes, true_betas=None, CV=False, verbose=False):
     if CV == True:
         logistic_reg = regression_CV(X, y_bin, outtype="logistic", verbose=verbose)
     else:
         logistic_reg = regression_noCV(X, y_bin, outtype="logistic", verbose=verbose)     
-    logistic_rmse = np.sqrt(((true_betas - logistic_reg.coef_[0][:n_causes])**2).mean())
-    trivial_rmse = np.sqrt(((true_betas - 0)**2).mean())
+    if true_betas!=None:
+        logistic_rmse = np.sqrt(((true_betas - logistic_reg.coef_[0][:n_causes])**2).mean())
+        trivial_rmse = np.sqrt(((true_betas - 0)**2).mean())
+        if verbose:
+            print("logistic outcome rmse: ", logistic_rmse, \
+                "\nlogistic - trivial: ", logistic_rmse - trivial_rmse)
+        return logistic_reg, logistic_rmse
+    else:
+        return logistic_reg
+
+
+def regression_CV(X, y, outtype="linear", verbose=False):
+    X_train, X_test, y_train, y_test = \
+        train_test_split(X, y, test_size=0.2, random_state=123)
+
+    if outtype == "linear":
+        reg = linear_model.Ridge()
+    elif outtype == "logistic":
+        reg = linear_model.RidgeClassifier()
+
+    parameters = dict(alpha=np.logspace(-5, 5, 10))
+    clf = GridSearchCV(reg, parameters)
+    clf.fit(X_train, y_train)
+
+    bestalpha = clf.best_estimator_.alpha
+    print("best alpha", bestalpha)
+
+    if outtype == "linear":
+        reg = linear_model.Ridge(alpha=bestalpha)
+    elif outtype == "logistic":
+        reg = linear_model.RidgeClassifier(alpha=bestalpha)
+
+    reg.fit(X_train, y_train)
+
     if verbose:
-        print("logistic outcome rmse: ", logistic_rmse, \
-            "\nlogistic - trivial: ", logistic_rmse - trivial_rmse)
-    return logistic_reg, logistic_rmse
+        print("training score", reg.score(X_train, y_train))
+        print("predictive score", reg.score(X_test, y_test))
+
+    return reg
+
+
+def regression_noCV(X, y, outtype="linear", verbose=False):
+    X_train, X_test, y_train, y_test = \
+        train_test_split(X, y, test_size=0.2, random_state=123)
+    if outtype == "linear":
+        reg = linear_model.Ridge(alpha=0)
+    elif outtype == "logistic":
+        reg = linear_model.RidgeClassifier(alpha=0)
+
+    reg.fit(X_train, y_train)
+
+    if verbose:
+        print("training score", reg.score(X_train, y_train))
+        print("predictive score", reg.score(X_test, y_test))
+
+    return reg
 
 
 def holdout_data(X):
@@ -315,6 +368,51 @@ def ppca_predictive_check(x_train, x_vad, holdout_mask, x_post, w_post, z_post, 
     return overall_pval
 
 
+def ppca_predictive_check_subsample(x_train, x_vad, holdout_mask, x_post, w_post, z_post, stddv_datapoints=1.0, n_rep=10,
+                          n_eval=10, n_sample=10, units_per_sample=5000):
+    '''
+    n_rep: the number of replicated datasets we generate
+    n_eval: the number of samples we draw samples from the inferred Z and W
+    '''
+    subsample_pvals = []
+    for s in range(n_sample):
+        subsample_idx = np.random.choice(range(units_per_sample), units_per_sample, replace=False)
+        holdout_gen = np.zeros([n_rep, x_train.shape[0], units_per_sample])
+        holdout_mask_sub = holdout_mask[:, subsample_idx]
+        holdout_row, holdout_col = np.where(holdout_mask_sub > 0)
+
+        for i in range(n_rep):
+            x_generated = x_post.sample().eval()[:, subsample_idx]
+
+            # look only at the heldout entries
+            holdout_gen[i] = np.multiply(x_generated, holdout_mask_sub)
+
+        obs_ll = []
+        rep_ll = []
+        x_vad_sub = x_vad[:, subsample_idx]
+
+        for j in range(n_eval):
+            w_sample = w_post.sample().eval()
+            z_sample = z_post.sample().eval()
+            x_sample = w_sample.dot(z_sample.T)[:, subsample_idx]
+
+            holdoutmean_sample = np.multiply(x_sample, holdout_mask_sub)
+            obs_ll.append(np.mean(stats.norm(holdoutmean_sample, \
+                                             stddv_datapoints).logpdf(x_vad_sub), axis=0))
+
+            rep_ll.append(np.mean(stats.norm(holdoutmean_sample, \
+                                             stddv_datapoints).logpdf(holdout_gen), axis=1))
+
+        obs_ll_per_zi, rep_ll_per_zi = np.mean(np.array(obs_ll), axis=0), np.mean(np.array(rep_ll), axis=0)
+
+        pvals = np.array([np.mean(rep_ll_per_zi[:, i] < obs_ll_per_zi[i]) for i in range(len(obs_ll_per_zi))])
+        holdout_subjects = np.unique(holdout_col)
+        subsample_pvals.append(np.mean(pvals[holdout_subjects]))
+        print("Predictive check of subsample {} p-values {}\n".format(s, subsample_pvals[-1]))
+    print("Predictive check p-values of all subsamples", subsample_pvals)
+
+    return subsample_pvals
+
 def fit_pmf(x_train, gamma_prior=0.1, M=100, K=10, n_iter=20000, optimizer=tf.train.RMSPropOptimizer(1e-4)):
 
     # the following code subsets on the column of x_train
@@ -402,8 +500,6 @@ def fit_pmf(x_train, gamma_prior=0.1, M=100, K=10, n_iter=20000, optimizer=tf.tr
     return x_post, U_post, V_post, pmf_x_post_np, pmf_z_post_np
 
 
-
-
 def pmf_predictive_check(x_train, x_vad, holdout_mask, x_post, V_post, U_post,n_rep=10, n_eval=10):
     '''
     n_rep: the number of replicated datasets we generate
@@ -443,9 +539,56 @@ def pmf_predictive_check(x_train, x_vad, holdout_mask, x_post, V_post, U_post,n_
     return overall_pval
 
 
+def pmf_predictive_check_subsample(x_train, x_vad, holdout_mask, x_post, V_post, U_post, n_rep=10, n_eval=10, n_sample=10, units_per_sample=5000):
+    '''
+    n_rep: the number of replicated datasets we generate
+    n_eval: the number of samples we draw samples from the inferred Z and W
+    '''
+    subsample_pvals = []
+    for s in range(n_sample):
+        subsample_idx = np.random.choice(range(units_per_sample), units_per_sample, replace=False)
+        holdout_gen = np.zeros([n_rep, x_train.shape[0], units_per_sample])
+        holdout_mask_sub = holdout_mask[:, subsample_idx]
+        holdout_row, holdout_col = np.where(holdout_mask_sub > 0)
 
-def fit_def(x_train, K=[100,30,5], M=100, prior_a=0.1, prior_b=0.3, shape=0.1, n_iter, q='lognormal', optimizer=tf.train.RMSPropOptimizer(1e-4)):
+        for i in range(n_rep):
+            x_generated = x_post.sample().eval()[:, subsample_idx]
 
+            # look only at the heldout entries
+            holdout_gen[i] = np.multiply(x_generated, holdout_mask_sub)
+
+        obs_ll = []
+        rep_ll = []
+        x_vad_sub = x_vad[:, subsample_idx]
+
+        for j in range(n_eval):
+            U_sample = U_post.sample().eval()
+            V_sample = V_post.sample().eval()
+            x_sample = V_sample.dot(U_sample.T)[:, subsample_idx]
+
+            holdoutmean_sample = np.multiply(x_sample, holdout_mask_sub)
+            obs_ll.append( \
+                np.mean(np.ma.masked_invalid(stats.poisson.logpmf(np.array(x_vad_sub, dtype=int), \
+                                                                  holdoutmean_sample)), axis=0))
+
+            rep_ll.append( \
+                np.mean(np.ma.masked_invalid(stats.poisson.logpmf(holdout_gen, \
+                                                                  holdoutmean_sample)), axis=1))
+
+        obs_ll_per_zi, rep_ll_per_zi = np.mean(np.array(obs_ll), axis=0), np.mean(np.array(rep_ll), axis=0)
+
+        pvals = np.array([np.mean(rep_ll_per_zi[:, i] < obs_ll_per_zi[i]) for i in range(len(obs_ll_per_zi))])
+        holdout_subjects = np.unique(holdout_col)
+        subsample_pvals.append(np.mean(pvals[holdout_subjects]))
+        overall_pval = np.mean(pvals[holdout_subjects])
+        print("Predictive check of subsample {} p-values {}\n".format(s, subsample_pvals[-1]))
+    print("Predictive check p-values of all subsamples", subsample_pvals)
+
+    return subsample_pvals
+
+
+def fit_def(x_train, K=[100, 30, 5], M=100, prior_a=0.1, prior_b=0.3, shape=0.1, q='lognormal',
+            optimizer=tf.train.RMSPropOptimizer(1e-4), n_iter=20000):
     # we default to RMSProp here. but we can also use Adam (lr=1e-2).
     # A successful training of def usually means a negative ELBO. In
     # this code, we used the stopping criterion being two consecutive
@@ -460,7 +603,8 @@ def fit_def(x_train, K=[100,30,5], M=100, prior_a=0.1, prior_b=0.3, shape=0.1, n
 
     # the same trick applies to all other factor models.
 
-    N, D = x_train.shape # num_causes, num_datapoints
+    # subsample on rows
+    N, D = x_train.shape  # number of documents, vocabulary size
     logdir = '~/log/def/'
     logdir = os.path.expanduser(logdir)
     tf.reset_default_graph()
@@ -468,7 +612,7 @@ def fit_def(x_train, K=[100,30,5], M=100, prior_a=0.1, prior_b=0.3, shape=0.1, n
 
     idx_ph = tf.placeholder(tf.int32, M)
     x_ph = tf.placeholder(tf.float32, [N, M])
-    
+
     # MODEL
     W2 = Gamma(prior_a, prior_b, sample_shape=[K[2], K[1]])
     W1 = Gamma(prior_a, prior_b, sample_shape=[K[1], K[0]])
@@ -477,8 +621,7 @@ def fit_def(x_train, K=[100,30,5], M=100, prior_a=0.1, prior_b=0.3, shape=0.1, n
     z3 = Gamma(prior_a, prior_b, sample_shape=[N, K[2]])
     z2 = Gamma(shape, shape / tf.matmul(z3, W2))
     z1 = Gamma(shape, shape / tf.matmul(z2, W1))
-    x = Poisson(tf.matmul(z1, W0)) # N by M
-
+    x = Poisson(tf.matmul(z1, W0))
 
     # INFERENCE
     def pointmass_q(shape, tfvar=None):
@@ -491,7 +634,6 @@ def fit_def(x_train, K=[100,30,5], M=100, prior_a=0.1, prior_b=0.3, shape=0.1, n
             rv = PointMass(tf.maximum(tf.nn.softplus(mean), min_mean))
         return rv
 
-
     def gamma_q(shape):
         # Parameterize Gamma q's via shape and scale, with softplus unconstraints.
         min_shape = 1e-3
@@ -499,11 +641,10 @@ def fit_def(x_train, K=[100,30,5], M=100, prior_a=0.1, prior_b=0.3, shape=0.1, n
         shape_init = 0.5 + 0.1 * tf.random_normal(shape)
         scale_init = 0.1 * tf.random_normal(shape)
         rv = Gamma(tf.maximum(tf.nn.softplus(tf.Variable(shape_init)),
-                            min_shape),
-                 tf.maximum(1.0 / tf.nn.softplus(tf.Variable(scale_init)),
-                            1.0 / min_scale))
+                              min_shape),
+                   tf.maximum(1.0 / tf.nn.softplus(tf.Variable(scale_init)),
+                              1.0 / min_scale))
         return rv
-
 
     def lognormal_q(shape, tfvar=None):
         min_scale = 1e-5
@@ -511,22 +652,21 @@ def fit_def(x_train, K=[100,30,5], M=100, prior_a=0.1, prior_b=0.3, shape=0.1, n
         scale_init = 0.1 * tf.random_normal(shape)
         if tfvar is None:
             rv = TransformedDistribution(
-              distribution=Normal(
-                  tf.Variable(loc_init),
-                  tf.maximum(tf.nn.softplus(tf.Variable(scale_init)), min_scale)),
-              bijector=tf.contrib.distributions.bijectors.Exp())
+                distribution=Normal(
+                    tf.Variable(loc_init),
+                    tf.maximum(tf.nn.softplus(tf.Variable(scale_init)), min_scale)),
+                bijector=tf.contrib.distributions.bijectors.Exp())
         else:
             loctfvar, scaletfvar = tfvar
             rv = TransformedDistribution(
-              distribution=Normal(
-                  loctfvar,
-                  tf.maximum(tf.nn.softplus(scaletfvar), min_scale)),
-              bijector=tf.contrib.distributions.bijectors.Exp())
+                distribution=Normal(
+                    loctfvar,
+                    tf.maximum(tf.nn.softplus(scaletfvar), min_scale)),
+                bijector=tf.contrib.distributions.bijectors.Exp())
         return rv
 
-
     # qz3loc, qz3scale = tf.Variable(tf.random_normal([N, K[2]])), tf.Variable(tf.random_normal([N, K[2]]))
-    # qz3locsub, qz3scalesub = tf.gather(qz3loc, idx_ph), tf.gather(qz3scale, idx_ph) 
+    # qz3locsub, qz3scalesub = tf.gather(qz3loc, idx_ph), tf.gather(qz3scale, idx_ph)
 
     qW0all = tf.Variable(tf.random_normal([K[0], D]))
     qW0sub = tf.gather(qW0all, idx_ph, axis=1)
@@ -554,7 +694,7 @@ def fit_def(x_train, K=[100,30,5], M=100, prior_a=0.1, prior_b=0.3, shape=0.1, n
 
     timestamp = datetime.strftime(datetime.utcnow(), "%Y%m%d_%H%M%S")
     logdir += timestamp + '_' + '_'.join([str(ks) for ks in K]) + \
-        '_q_' + str(q)
+              '_q_' + str(q)
     kwargs = {'optimizer': optimizer,
               'n_print': 100,
               'logdir': logdir,
@@ -566,8 +706,7 @@ def fit_def(x_train, K=[100,30,5], M=100, prior_a=0.1, prior_b=0.3, shape=0.1, n
 
     tf.global_variables_initializer().run()
 
-
-    n_iter_per_epoch = 1000
+    n_iter_per_epoch = 1000 # 1000 in yixin's code
     n_epoch = int(n_iter / n_iter_per_epoch)
     min_nll = 1e16
     prev_change = -1e16
@@ -596,8 +735,8 @@ def fit_def(x_train, K=[100,30,5], M=100, prior_a=0.1, prior_b=0.3, shape=0.1, n
         W0_post = pointmass_q(qW0all.shape, qW0all)
         x_post = Poisson(tf.matmul(z1_post, W0_post))
         def_x_post_np = x_post.mean().eval()
-        print("trivial mse", ((x_train-0)**2).mean())
-        print("mse", ((x_train-def_x_post_np)**2).mean())
+        print("trivial mse", ((x_train - 0) ** 2).mean())
+        print("mse", ((x_train - def_x_post_np) ** 2).mean())
         print(nll, min_nll, nll < min_nll)
         if nll < min_nll:
             min_nll = nll.copy()
@@ -606,10 +745,10 @@ def fit_def(x_train, K=[100,30,5], M=100, prior_a=0.1, prior_b=0.3, shape=0.1, n
             min_z1_post = z1_post
             min_W0_post = W0_post
             min_x_post = x_post
-            min_def_x_post_np = def_x_post_np.T.copy()
+            min_def_x_post_np = def_x_post_np.copy()
             min_def_z_post_np = W0_post.eval().T.copy()
 
-        cur_change = (nll - min_nll)/np.abs(min_nll)
+        cur_change = (nll - min_nll) / np.abs(min_nll)
 
         print("cur-LL", nll, "min-LL", min_nll, "diffratio-LL", cur_change)
 
@@ -619,14 +758,13 @@ def fit_def(x_train, K=[100,30,5], M=100, prior_a=0.1, prior_b=0.3, shape=0.1, n
             if cur_change > 0:
                 break
 
-        prev_change = cur_change.copy()
+        prev_change = cur_change
 
         # if cur_change > 0.1:
-            # if nll < 0:
-            # break
+        # if nll < 0:
+        # break
         if math.isnan(nll):
             break
-
 
     # z3_post = lognormal_q([N, K[2]], (qz3loc, qz3scale))
     # z2_post = Gamma(shape, shape / tf.matmul(z3_post, W2))
@@ -639,12 +777,9 @@ def fit_def(x_train, K=[100,30,5], M=100, prior_a=0.1, prior_b=0.3, shape=0.1, n
     z1_post = Gamma(shape, shape / tf.matmul(z2_post, W1))
     W0_post = pointmass_q(qW0all.shape, qW0all)
     x_post = Poisson(tf.matmul(z1_post, W0_post))
-    def_x_post_np = x_post.mean().eval().T
+    def_x_post_np = x_post.mean().eval()
     def_z_post_np = W0_post.eval().T
-
     return x_post, z3_post, z2_post, z1_post, W0_post, def_x_post_np, def_z_post_np
-
-
 
 def def_predictive_check(x_train, x_vad, holdout_mask, x_post, z1_post, W0_post, n_rep=10, n_eval=10):
     '''
@@ -684,6 +819,51 @@ def def_predictive_check(x_train, x_vad, holdout_mask, x_post, z1_post, W0_post,
 
     return overall_pval
 
+
+def def_predictive_check_subsample(x_train, x_vad, holdout_mask, x_post, z1_post, W0_post, n_rep=10, n_eval=10, n_sample=10, units_per_sample=5000):
+    '''
+    n_rep: the number of replicated datasets we generate
+    n_eval: the number of samples we draw samples from the inferred Z and W
+    '''
+
+    subsample_pvals = []
+    for s in range(n_sample):
+        subsample_idx = np.random.choice(range(units_per_sample), units_per_sample, replace=False)
+        holdout_gen = np.zeros([n_rep, x_train.shape[0], units_per_sample])
+        holdout_mask_sub = holdout_mask[:, subsample_idx]
+        holdout_row, holdout_col = np.where(holdout_mask_sub > 0)
+        for i in range(n_rep):
+            x_generated = x_post.sample().eval()[:, subsample_idx]
+            # look only at the heldout entries
+            holdout_gen[i] = np.multiply(x_generated, holdout_mask_sub)
+
+        obs_ll = []
+        rep_ll = []
+        x_vad_sub = x_vad[:, subsample_idx]
+
+        for j in range(n_eval):
+            z1_sample = z1_post.sample().eval()
+            W0_sample = W0_post.eval()
+            x_sample = z1_sample.dot(W0_sample)[:, subsample_idx]
+            holdoutmean_sample = np.multiply(x_sample, holdout_mask_sub)
+
+            obs_ll.append( \
+                np.mean(np.ma.masked_invalid(stats.poisson.logpmf(np.array(x_vad_sub, dtype=int), \
+                                                                  holdoutmean_sample)), axis=0))
+
+            rep_ll.append( \
+                np.mean(np.ma.masked_invalid(stats.poisson.logpmf(holdout_gen, \
+                                                                  holdoutmean_sample)), axis=1))
+
+        obs_ll_per_zi, rep_ll_per_zi = np.mean(np.array(obs_ll), axis=0), np.mean(np.array(rep_ll), axis=0)
+
+        pvals = np.array([np.mean(rep_ll_per_zi[:, i] < obs_ll_per_zi[i]) for i in range(len(obs_ll_per_zi))])
+        holdout_subjects = np.unique(holdout_col)
+        subsample_pvals.append(np.mean(pvals[holdout_subjects]))
+        print("Predictive check of subsample {} p-values {}\n".format(s, subsample_pvals[-1]))
+    print("Predictive check p-values of all subsamples", subsample_pvals)
+
+    return subsample_pvals
 
 def fit_lfa(x_train, M=100, K=10, n_iter=20000, optimizer=tf.train.RMSPropOptimizer(1e-4)):
 
@@ -743,8 +923,6 @@ def fit_lfa(x_train, M=100, K=10, n_iter=20000, optimizer=tf.train.RMSPropOptimi
     return x_post, U_post, V_post, lfa_x_post_np, lfa_z_post_np
 
 
-
-
 def lfa_predictive_check(x_train, x_vad, holdout_mask, x_post, V_post, U_post,n_rep=10, n_eval=10):
     '''
     n_rep: the number of replicated datasets we generate
@@ -802,52 +980,3 @@ def lfa_predictive_check(x_train, x_vad, holdout_mask, x_post, V_post, U_post,n_
 
     return overall_pval
 
-
-def regression_CV(X, y, outtype="linear", verbose=False):
-
-    X_train, X_test, y_train, y_test = \
-            train_test_split(X, y, test_size=0.2, random_state=123)
-
-    if outtype == "linear":
-        reg = linear_model.Ridge()
-    elif outtype == "logistic":
-        reg = linear_model.RidgeClassifier()
-
-    parameters = dict(alpha=np.logspace(-5, 5, 10))
-    clf = GridSearchCV(reg, parameters)
-    clf.fit(X_train, y_train)
-
-    bestalpha = clf.best_estimator_.alpha
-    print("best alpha", bestalpha)
-
-    if outtype == "linear":
-        reg = linear_model.Ridge(alpha=bestalpha)
-    elif outtype == "logistic":
-        reg = linear_model.RidgeClassifier(alpha=bestalpha)
-
-    reg.fit(X_train, y_train)
-    
-    if verbose:
-        print("training score", reg.score(X_train, y_train))
-        print("predictive score", reg.score(X_test, y_test))
-
-    return reg
-
-
-def regression_noCV(X, y, outtype="linear", verbose=False):
-
-    X_train, X_test, y_train, y_test = \
-            train_test_split(X, y, test_size=0.2, random_state=123)
-
-    if outtype == "linear":
-        reg = linear_model.Ridge(alpha=0)
-    elif outtype == "logistic":
-        reg = linear_model.RidgeClassifier(alpha=0)
-
-    reg.fit(X_train, y_train)
-    
-    if verbose:
-        print("training score", reg.score(X_train, y_train))
-        print("predictive score", reg.score(X_test, y_test))
-
-    return reg
