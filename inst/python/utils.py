@@ -223,7 +223,7 @@ def regression_CV(X, y, outtype="linear", verbose=False):
 
 def regression_noCV(X, y, outtype="linear", verbose=False):
     X_train, X_test, y_train, y_test = \
-        train_test_split(X, y, test_size=0.2, random_state=123)
+        train_test_split(X, y, test_size=0.3, random_state=123)
     if outtype == "linear":
         reg = linear_model.Ridge(alpha=0)
     elif outtype == "logistic":

@@ -16,7 +16,6 @@ import matplotlib.pyplot as plt
 
 plt.style.use('ggplot')
 import numpy as np
-import numpy.random as npr
 import pandas as pd
 import os
 from datetime import *
@@ -94,11 +93,11 @@ lowdim = args.lowdim
 K = args.K
 reg_nitr = args.reg_nitr
 data_dir = args.data_dir
-out_dir = os.path.join(args.out_dir, str(randseed)+"def_nitr"+str(n_iter)+"regnitr"+str(reg_nitr))
-
-
-if not os.path.exists(out_dir):
-    os.makedirs(out_dir)
+# out_dir = os.path.join(args.out_dir, str(randseed)+"nitr"+str(n_iter)+"regnitr"+str(reg_nitr))
+#
+#
+# if not os.path.exists(out_dir):
+#     os.makedirs(out_dir)
 #############################################################
 # load preprocessed genetics data
 # to preprocess the data, run clean_hapmap.py
@@ -264,10 +263,10 @@ x_train, x_vad, holdout_mask = holdout_data(G)
 #############################################################
 # estimate causal effects: pmf
 #############################################################
-# print("\npmf control\n")
-#
-# # the stochastic vi code subsamples on columns. we pass in the
-# # transpose of x_train to subsampling on rows.
+print("\npmf control\n")
+
+# the stochastic vi code subsamples on columns. we pass in the
+# transpose of x_train to subsampling on rows.
 #
 # pmf_x_post, pmf_z_post, pmf_w_post, pmf_x_post_np, pmf_z_post_np = fit_pmf(x_train.T, M=100, K=10, n_iter=n_iter)
 # np.savetxt(os.path.join(out_dir, "pmf_x_post_np.txt"), pmf_x_post_np)
@@ -282,27 +281,57 @@ x_train, x_vad, holdout_mask = holdout_data(G)
 #
 # print("PMF predictive check", pmf_pval)
 
+Y, mask = load_data(data_dir, "measChangeSparseMat.txt", create_mask=True)
+n_outcomes = Y.shape[1]
+out_dir = "/phi/proj/deconfounder/multivariate_medical_deconfounder/res/52297372nitr100000regnitr100000"
+pmf_z_post_np = np.loadtxt(os.path.join(out_dir, "pmf_z_post_np.txt"))
+
+pmf_no_ctrl = np.zeros([n_causes, n_outcomes])
+pmf_dcf = np.zeros([n_causes, n_outcomes])
+
+for o in range(n_outcomes):
+    print("Outcome {}".format(o))
+    row_bool = mask[:, o] == 1
+    col_bool = G[row_bool,:].sum(axis=0) >= 0.001*mask[:,o].sum()
+    if sum(row_bool) >= 10:
+        X = np.column_stack([G[row_bool,:][:,col_bool], pmf_z_post_np[row_bool, :]])
+        y = Y[row_bool, o]
+        reg_no_ctrl = fit_outcome_linear(G[row_bool,:][:,col_bool], y, sum(col_bool), CV=False, verbose=True)
+        pmf_no_ctrl[col_bool, o] = reg_no_ctrl.coef_
+        pmf_no_ctrl[~col_bool, o] = np.nan
+        reg_dcf = fit_outcome_linear(X, y, sum(col_bool), CV=False, verbose=True)
+        pmf_dcf[col_bool, o] = reg_dcf.coef_[:sum(col_bool)]
+        pmf_dcf[~col_bool, o] = np.nan
+    else:
+        pmf_no_ctrl[:,o] = np.nan
+        pmf_dcf[:,o] = np.nan
+        print("Less than 10 samples, skip outcome {}".format(o))
+
+
+
+np.savetxt(os.path.join(out_dir, "pmf_no_ctrl_indept_threshold_coef.txt"), pmf_no_ctrl)
+np.savetxt(os.path.join(out_dir, "pmf_dcf_indept_threshold_coef.txt"), pmf_dcf)
+
+# Y[mask==0] = np.nan
+# col_mean = np.nanmean(Y, axis=0)
+# inds = np.where(np.isnan(Y))
+# Y[inds] = np.take(col_mean, inds[1])
 #
-# pmf_linear_rmse_sing = np.zeros([n_causes, n_outcomes])
-#
-# pmf_logistic_rmse_sing = np.zeros([n_causes, n_outcomes])
-#
+# pmf_linear_reg = fit_multiple_outcome_linear(G, Y, n_causes, CV=False, lowdim=False, K=K,
+#                                                               n_iter=reg_nitr, verbose=False)
+
 # for j in range(n_causes):
 #     # X = np.column_stack([G[:,j][:,np.newaxis], pmf_x_post_np[:,j][:,np.newaxis]])
 #     X = np.column_stack([G[:, j][:, np.newaxis], pmf_z_post_np])
 #     for o in range(n_outcomes):
-#         _, pmf_linear_rmse_sing[j][o] = fit_outcome_linear(X, y[:, o], true_betas[j][o], 1, CV=False)
-#         _, pmf_logistic_rmse_sing[j][o] = fit_outcome_logistic(X, y_bin[:, o], true_betas[j][o], 1, CV=False)
-#
-# print("pmf_linear_rmse_sing.mean()", pmf_linear_rmse_sing.mean())
-#
-# print("pmf_logistic_rmse_sing.mean()", pmf_logistic_rmse_sing.mean())
+#         reg_no_ctrl = fit_outcome_linear(G[:,j][:,np.newaxis], y[:, o], 1, CV=False)
+#         pmf_no_ctrl[j][o] = reg_no_ctrl.coef_
+#         reg_dcf = fit_outcome_linear(X, y[:, o], 1, CV=False)
+#         pmf_dcf[j][o] = reg.coef_
 #
 # X = np.column_stack([G, pmf_z_post_np])
 #
-# pmf_linear_reg, pmf_linear_rmse = fit_multiple_outcome_linear(X, y, true_betas, n_causes, CV=CV, lowdim=lowdim, K=K,
-#                                                               n_iter=reg_nitr, verbose=False)
-# print("pmf_linear_rmse", pmf_linear_rmse)
+
 #
 # pmf_logistic_reg, pmf_logistic_rmse = fit_multiple_outcome_logistic(X, y_bin, true_betas, n_causes, CV=CV,
 #                                                                     lowdim=lowdim, K=K, n_iter=reg_nitr, verbose=False)
@@ -311,27 +340,29 @@ x_train, x_vad, holdout_mask = holdout_data(G)
 #############################################################
 # estimate causal effects: def
 #############################################################
-print("\ndef control\n")
-
-# the stochastic vi code subsamples on columns. we pass in the
-# transpose of x_train to subsampling on rows.
-
-def_x_post, def_z3_post, def_z2_post, def_z1_post, def_W0_post, def_x_post_np, def_z_post_np = fit_def(x_train.T,
-                                                                                                       K=[100, 30, 10],
-                                                                                                       prior_a=0.1,
-                                                                                                       prior_b=0.3,
-                                                                                                       n_iter=n_iter)
-np.savetxt(os.path.join(out_dir, "def_x_post_np.txt"), def_x_post_np)
-np.savetxt(os.path.join(out_dir, "def_z_post_np.txt"), def_z_post_np)
-print("check DEF fit")
-
-print("trivial mse", ((G - 0) ** 2).mean())
-
-print("DEF mse", ((G - def_x_post_np.T) ** 2).mean())
-
-def_pval = def_predictive_check_subsample(x_train.T, x_vad.T, holdout_mask.T, def_x_post, def_z1_post, def_W0_post)
-
-print("DEF predictive check", def_pval)
+# print("\ndef control\n")
+#
+# # the stochastic vi code subsamples on columns. we pass in the
+# # transpose of x_train to subsampling on rows.
+#
+# def_x_post, def_z3_post, def_z2_post, def_z1_post, def_W0_post, def_x_post_np, def_z_post_np = fit_def(x_train.T,
+#                                                                                                        K=[100, 30, 5],
+#                                                                                                        prior_a=0.1,
+#                                                                                                        prior_b=0.3,
+#                                                                                                        optimizer=tf.train.AdamOptimizer(
+#                                                                                                            1e-2),
+#                                                                                                        n_iter=n_iter)
+# # np.savetxt(os.path.join(out_dir, "def_x_post_np.txt"), def_x_post_np)
+# # np.savetxt(os.path.join(out_dir, "def_z_post_np.txt"), def_z_post_np)
+# print("check DEF fit")
+#
+# print("trivial mse", ((G - 0) ** 2).mean())
+#
+# print("DEF mse", ((G - def_x_post_np.T) ** 2).mean())
+#
+# def_pval = def_predictive_check_subsample(x_train.T, x_vad.T, holdout_mask.T, def_x_post, def_z1_post, def_W0_post)
+#
+# print("DEF predictive check", def_pval)
 
 # X = G - def_x_post_np
 

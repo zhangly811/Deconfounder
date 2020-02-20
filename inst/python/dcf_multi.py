@@ -21,14 +21,14 @@ import os
 from datetime import *
 import argparse
 
-# import utils
-#
-# reload(utils)
-# import utils_multi
-#
-# reload(utils_multi)
-# from utils import *
-# from utils_multi import *
+import utils
+
+reload(utils)
+import utils_multi
+
+reload(utils_multi)
+from utils import *
+from utils_multi import *
 
 
 #############################################################
@@ -289,31 +289,37 @@ pmf_z_post_np = np.loadtxt(os.path.join(out_dir, "pmf_z_post_np.txt"))
 pmf_no_ctrl = np.zeros([n_causes, n_outcomes])
 pmf_dcf = np.zeros([n_causes, n_outcomes])
 
-# for o in range(n_outcomes):
-#     print("Outcome {}".format(o))
-#     row_bool = mask[:, o] == 1
-#     if sum(row_bool) >= 2:
-#         for j in range(n_causes):
-#             X = np.column_stack([G[row_bool, j][:, np.newaxis], pmf_z_post_np[row_bool, :]])
-#             y = Y[row_bool, o]
-#             reg_no_ctrl = fit_outcome_linear(G[row_bool,j][:,np.newaxis], y, 1, CV=False)
-#             pmf_no_ctrl[j][o] = reg_no_ctrl.coef_
-#             reg_dcf = fit_outcome_linear(X, y, 1, CV=False)
-#             pmf_dcf[j][o] = reg_dcf.coef_[0]
-#     else:
-#         print("Skip outcome {}".format(o))
-#
-#
-# np.savetxt(os.path.join(out_dir, "pmf_no_ctrl_indept_coef.txt"), pmf_no_ctrl)
-# np.savetxt(os.path.join(out_dir, "pmf_dcf_indept_coef.txt"), pmf_dcf)
+for o in range(n_outcomes):
+    print("Outcome {}".format(o))
+    row_bool = mask[:, o] == 1
+    col_bool = G[row_bool,:].sum(axis=0) >= 0.001*mask[:,o].sum()
+    if sum(row_bool) >= 10:
+        X = np.column_stack([G[row_bool,:][:,col_bool], pmf_z_post_np[row_bool, :]])
+        y = Y[row_bool, o]
+        y = (y-y.mean())/y.std()
+        reg_no_ctrl = fit_outcome_linear(G[row_bool,:][:,col_bool], y, sum(col_bool), CV=False, verbose=True)
+        pmf_no_ctrl[col_bool, o] = reg_no_ctrl.coef_
+        pmf_no_ctrl[~col_bool, o] = np.nan
+        reg_dcf = fit_outcome_linear(X, y, sum(col_bool), CV=False, verbose=True)
+        pmf_dcf[col_bool, o] = reg_dcf.coef_[:sum(col_bool)]
+        pmf_dcf[~col_bool, o] = np.nan
+    else:
+        pmf_no_ctrl[:,o] = np.nan
+        pmf_dcf[:,o] = np.nan
+        print("Less than 10 samples, skip outcome {}".format(o))
 
-Y[mask==0] = np.nan
-col_mean = np.nanmean(Y, axis=0)
-inds = np.where(np.isnan(Y))
-Y[inds] = np.take(col_mean, inds[1])
 
-pmf_linear_reg = fit_multiple_outcome_linear(G, Y, n_causes, CV=False, lowdim=False, K=K,
-                                                              n_iter=reg_nitr, verbose=False)
+
+np.savetxt(os.path.join(out_dir, "pmf_no_ctrl_indept_threshold_standy_coef.txt"), pmf_no_ctrl)
+np.savetxt(os.path.join(out_dir, "pmf_dcf_indept_threshold_standy_coef.txt"), pmf_dcf)
+
+# Y[mask==0] = np.nan
+# col_mean = np.nanmean(Y, axis=0)
+# inds = np.where(np.isnan(Y))
+# Y[inds] = np.take(col_mean, inds[1])
+#
+# pmf_linear_reg = fit_multiple_outcome_linear(G, Y, n_causes, CV=False, lowdim=False, K=K,
+#                                                               n_iter=reg_nitr, verbose=False)
 
 # for j in range(n_causes):
 #     # X = np.column_stack([G[:,j][:,np.newaxis], pmf_x_post_np[:,j][:,np.newaxis]])
