@@ -64,7 +64,7 @@ parser.add_argument('-confint', '--confint', \
 parser.add_argument('-cp', '--causalprop', \
                     type=int, default=100)
 parser.add_argument('-nitr', '--niter', \
-                    type=int, default=20000)#20000
+                    type=int, default=100000)
 parser.add_argument('-no', '--numoutcomes', \
                     type=int, default=50)
 parser.add_argument('-ld', '--lowdim', \
@@ -72,11 +72,11 @@ parser.add_argument('-ld', '--lowdim', \
 parser.add_argument('-K', '--K', \
                     type=int, default=2)
 parser.add_argument('-rn', '--reg_nitr', \
-                    type=int, default=100000)#100000
+                    type=int, default=100000)
 parser.add_argument('-data_dir', '--data_dir', \
-    type=str, default="/phi/proj/deconfounder/multivariate_medical_deconfounder/dat/1FullCohort")
+    type=str, default="/phi/proj/deconfounder/MvDeconfounder/dat/1FullCohort")
 parser.add_argument('-out_dir', '--out_dir', \
-    type=str, default="/phi/proj/deconfounder/multivariate_medical_deconfounder/res")
+    type=str, default="/phi/proj/deconfounder/MvDeconfounder/res")
 
 args, unknown = parser.parse_known_args()
 
@@ -93,120 +93,15 @@ lowdim = args.lowdim
 K = args.K
 reg_nitr = args.reg_nitr
 data_dir = args.data_dir
-# out_dir = os.path.join(args.out_dir, str(randseed)+"nitr"+str(n_iter)+"regnitr"+str(reg_nitr))
-#
-#
-# if not os.path.exists(out_dir):
-#     os.makedirs(out_dir)
-#############################################################
-# load preprocessed genetics data
-# to preprocess the data, run clean_hapmap.py
-#############################################################
+out_dir = os.path.join(args.out_dir, str(randseed)+"nitr"+str(n_iter)+"K"+str(K))
 
-# Fs = np.loadtxt("hapmap_mimno_genes_clean_Fs.csv")
-# ps = np.loadtxt("hapmap_mimno_genes_clean_ps.csv")
-# hapmap_gene_clean = pd.read_csv("hapmap_mimno_genes_clean.csv")
-# n_hapmapgenes = hapmap_gene_clean.shape[1]
-#
-# #############################################################
-# # simulate genes (causes) and traits (outcomes)
-# #############################################################
-#
-# D = 3
-# if simset == "BN":
-#     G, lambdas = sim_genes_BN(Fs, ps, n_hapmapgenes, n_causes, n_units, D)
-# elif simset == "TGP":
-#     G, lambdas = sim_genes_TGP(Fs, ps, n_hapmapgenes, n_causes, n_units, hapmap_gene_clean, D)
-# elif simset == "PSD":
-#     G, lambdas = sim_genes_PSD(Fs, ps, n_hapmapgenes, n_causes, n_units, D)
-# elif simset == "SP":
-#     G, lambdas = sim_genes_SP(Fs, ps, n_hapmapgenes, n_causes, n_units, D)
-#
-# # remove genes that take the same value on all individuals
-# const_cols = np.where(np.var(G, axis=0) < 0.001)[0]
-# print(const_cols)
-# if len(const_cols) > 0:
-#     G = G[:, list(set(range(n_causes)) - set(const_cols))]
-#     n_causes -= len(const_cols)
-#
-# # simulate outcome
-# y, y_bin, true_betas, true_lambdas, betas, gamma, lambdacoefs = sim_multiple_traits(lambdas, G, \
-#                                                                                     a=a, b=b, n_outcomes=n_outcomes,
-#                                                                                     K=K, causalprop=causalprop)
-#
-# trivial_rmse = np.sqrt(((true_betas - 0) ** 2).mean())
-#
-# print("trivial", trivial_rmse)
 
+if not os.path.exists(out_dir):
+    os.makedirs(out_dir)
 
 G = load_data(data_dir, 'drugSparseMat.txt', create_mask=False)
 n_units = G.shape[0]
 n_causes = G.shape[1]
-
-# #############################################################
-# # estimate causal effects: no control
-# #############################################################
-# print("\nno control\n")
-#
-# nctrl_linear_rmse_sing = np.zeros([n_causes, n_outcomes])
-#
-# nctrl_logistic_rmse_sing = np.zeros([n_causes, n_outcomes])
-#
-# for j in range(n_causes):
-#     X = np.column_stack([G[:, j][:, np.newaxis]])
-#     # X = np.column_stack([G[:,j].toarray()])
-#     for o in range(n_outcomes):
-#         _, nctrl_linear_rmse_sing[j][o] = fit_outcome_linear(X, y[:, o], true_betas[j][o], 1, CV=False)
-#         _, nctrl_logistic_rmse_sing[j][o] = fit_outcome_logistic(X, y_bin[:, o], true_betas[j][o], 1, CV=False)
-#
-# print("nctrl_linear_rmse_sing.mean()", nctrl_linear_rmse_sing.mean())
-#
-# print("nctrl_logistic_rmse_sing.mean()", nctrl_logistic_rmse_sing.mean())
-#
-# X = G
-#
-# nctrl_linear_reg, nctrl_linear_rmse = fit_multiple_outcome_linear(X, y, true_betas, n_causes, CV=CV, lowdim=lowdim, K=K,
-#                                                                   n_iter=reg_nitr, verbose=False)
-#
-# print("nctrl_linear_rmse", nctrl_linear_rmse)
-#
-# nctrl_logistic_reg, nctrl_logistic_rmse = fit_multiple_outcome_logistic(X, y_bin, true_betas, n_causes, CV=CV,
-#                                                                         lowdim=lowdim, K=K, n_iter=reg_nitr,
-#                                                                         verbose=False)
-#
-# print("nctrl_logistic_rmse", nctrl_logistic_rmse)
-#
-# #############################################################
-# # estimate causal effects: oracle
-# #############################################################
-# print("\noracle control\n")
-#
-# oracle_linear_rmse_sing = np.zeros([n_causes, n_outcomes])
-#
-# oracle_logistic_rmse_sing = np.zeros([n_causes, n_outcomes])
-#
-# for j in range(n_causes):
-#     X = np.column_stack([G[:, j][:, np.newaxis], lambdas])
-#     # X = np.column_stack([G[:,j].toarray(), lambdas])
-#     for o in range(n_outcomes):
-#         _, oracle_linear_rmse_sing[j][o] = fit_outcome_linear(X, y[:, o], true_betas[j][o], 1, CV=False)
-#         _, oracle_logistic_rmse_sing[j][o] = fit_outcome_logistic(X, y_bin[:, o], true_betas[j][o], 1, CV=False)
-#
-# print("oracle_linear_rmse_sing.mean()", oracle_linear_rmse_sing.mean())
-#
-# print("oracle_logistic_rmse_sing.mean()", oracle_logistic_rmse_sing.mean())
-#
-# X = np.column_stack([G, lambdas])
-#
-# oracle_linear_reg, oracle_linear_rmse = fit_multiple_outcome_linear(X, y, true_betas, n_causes, CV=CV, lowdim=lowdim,
-#                                                                     K=K, n_iter=reg_nitr, verbose=False)
-# print("oracle_linear_rmse", oracle_linear_rmse)
-#
-# oracle_logistic_reg, oracle_logistic_rmse = fit_multiple_outcome_logistic(X, y_bin, true_betas, n_causes, CV=CV,
-#                                                                           lowdim=lowdim, K=K, n_iter=reg_nitr,
-#                                                                           verbose=False)
-# print("oracle_logistic_rmse", oracle_logistic_rmse)
-#
 
 x_train, x_vad, holdout_mask = holdout_data(G)
 
@@ -219,9 +114,9 @@ x_train, x_vad, holdout_mask = holdout_data(G)
 # # transpose of x_train to subsampling on rows.
 #
 # ppca_x_post, ppca_w_post, ppca_z_post, ppca_x_post_np, ppca_z_post_np = fit_ppca(x_train.T, stddv_datapoints=1.0, M=100,
-#                                                                                  K=5, n_iter=n_iter, optimizer="adam")
-# # np.savetxt(os.path.join(out_dir, "ppca_x_post_np.txt"), ppca_x_post_np)
-# # np.savetxt(os.path.join(out_dir, "ppca_z_post_np.txt"), ppca_z_post_np)
+#                                                                                  K=10, n_iter=n_iter, optimizer="adam")
+# np.savetxt(os.path.join(out_dir, "ppca_x_post_np.txt"), ppca_x_post_np)
+# np.savetxt(os.path.join(out_dir, "ppca_z_post_np.txt"), ppca_z_post_np)
 #
 # print("check PPCA fit")
 #
@@ -232,7 +127,7 @@ x_train, x_vad, holdout_mask = holdout_data(G)
 # ppca_pval = ppca_predictive_check_subsample(x_train.T, x_vad.T, holdout_mask.T, ppca_x_post, ppca_w_post, ppca_z_post)
 #
 # print("PPCA predictive check", ppca_pval)
-
+#
 #
 # ppca_linear_rmse_sing = np.zeros([n_causes, n_outcomes])
 #
@@ -267,51 +162,83 @@ print("\npmf control\n")
 
 # the stochastic vi code subsamples on columns. we pass in the
 # transpose of x_train to subsampling on rows.
+pmf_x_post, pmf_z_post, pmf_w_post, pmf_x_post_np, pmf_z_post_np = fit_pmf(x_train.T, out_dir, M=100, K=K, n_iter=n_iter)
+np.savetxt(os.path.join(out_dir, "pmf_x_post_np_{}.txt".format(K)), pmf_x_post_np)
+np.savetxt(os.path.join(out_dir, "pmf_z_post_np_{}.txt".format(K)), pmf_z_post_np)
+print("check PMF fit")
+
+print("trivial mse", ((G - 0) ** 2).mean())
+
+print("PMF mse", ((G - pmf_x_post_np.T) ** 2).mean())
+
+pmf_pval = pmf_predictive_check_subsample(x_train.T, x_vad.T, holdout_mask.T, pmf_x_post, pmf_w_post, pmf_z_post)
+
+print("PMF predictive check", pmf_pval)
 #
-# pmf_x_post, pmf_z_post, pmf_w_post, pmf_x_post_np, pmf_z_post_np = fit_pmf(x_train.T, M=100, K=10, n_iter=n_iter)
-# np.savetxt(os.path.join(out_dir, "pmf_x_post_np.txt"), pmf_x_post_np)
-# np.savetxt(os.path.join(out_dir, "pmf_z_post_np.txt"), pmf_z_post_np)
-# print("check PMF fit")
+# Y, mask = load_data(data_dir, "measChangeSparseMat.txt", create_mask=True)
+# n_outcomes = Y.shape[1]
+# out_dir = "/phi/proj/deconfounder/MvDeconfounder/res/52297372nitr100000regnitr100000"
+# pmf_z_post_np = np.loadtxt(os.path.join(out_dir, "pmf_z_post_np.txt"))
+
+#### single cause single outcome
+# pmf_no_ctrl = np.zeros([n_causes, n_outcomes])
+# pmf_dcf = np.zeros([n_causes, n_outcomes])
+# pmf_dcf_conf = np.zeros([n_causes, n_outcomes, pmf_z_post_np.shape[1]])
 #
-# print("trivial mse", ((G - 0) ** 2).mean())
+# for o in range(n_outcomes):
+#     print("Outcome {}".format(o))
+#     row_bool = mask[:, o] == 1
+#     col_bool = G[row_bool, :].sum(axis=0) >= 0.001*mask[:,o].sum() # find drugs at least 0.1% frequent for each outcome
+#     if sum(row_bool) >= 10000:
+#         for j in range(n_causes):
+#             print("Outcome {} Cause {}".format(o, j))
+#             X = np.column_stack([G[row_bool, j][:, np.newaxis], pmf_z_post_np[row_bool, :]]) # stack one cause and the confounders
+#             y = Y[row_bool, o]
+#             y = (y-y.mean())/y.std()
+#             reg_no_ctrl = fit_outcome_linear(G[row_bool, j][:, np.newaxis], y, 1, regularization="Ridge", params=np.logspace(0,4,5), CV=False, verbose=True)#np.logspace(0,4,5)
+#             pmf_no_ctrl[j, o] = reg_no_ctrl.coef_
+#             reg_dcf = fit_outcome_linear(X, y, 1, regularization="Ridge", params=np.logspace(0,4,5), CV=False, verbose=True)
+#             pmf_dcf[j, o] = reg_dcf.coef_[0]
+#             pmf_dcf_conf[j,o,:] = reg_dcf.coef_[1:]
+#         pmf_no_ctrl[~col_bool, o] = np.nan
+#         pmf_dcf[~col_bool, o] = np.nan
+#     else:
+#         pmf_no_ctrl[:,o] = np.nan
+#         pmf_dcf[:,o] = np.nan
+#         print("skip outcome {}".format(o))
 #
-# print("PMF mse", ((G - pmf_x_post_np.T) ** 2).mean())
 #
-# pmf_pval = pmf_predictive_check_subsample(x_train.T, x_vad.T, holdout_mask.T, pmf_x_post, pmf_w_post, pmf_z_post)
+# np.savetxt(os.path.join(out_dir, "pmf_no_ctrl_single_cause_indept_threshold_standy_ridge_lambda100_coef.txt"), pmf_no_ctrl)
+# np.savetxt(os.path.join(out_dir, "pmf_dcf_single_cause_indept_threshold_standy_ridge_lambda100_coef.txt"), pmf_dcf)
+# np.savetxt(os.path.join(out_dir, "pmf_dcf_single_cause_indept_threshold_standy_ridge_lambda100_coef_conf.txt"), pmf_dcf_conf)
 #
-# print("PMF predictive check", pmf_pval)
-
-Y, mask = load_data(data_dir, "measChangeSparseMat.txt", create_mask=True)
-n_outcomes = Y.shape[1]
-out_dir = "/phi/proj/deconfounder/multivariate_medical_deconfounder/res/52297372nitr100000regnitr100000"
-pmf_z_post_np = np.loadtxt(os.path.join(out_dir, "pmf_z_post_np.txt"))
-
-pmf_no_ctrl = np.zeros([n_causes, n_outcomes])
-pmf_dcf = np.zeros([n_causes, n_outcomes])
-
-for o in range(n_outcomes):
-    print("Outcome {}".format(o))
-    row_bool = mask[:, o] == 1
-    col_bool = G[row_bool,:].sum(axis=0) >= 0.001*mask[:,o].sum()
-    if sum(row_bool) >= 10:
-        X = np.column_stack([G[row_bool,:][:,col_bool], pmf_z_post_np[row_bool, :]])
-        y = Y[row_bool, o]
-        y = (y-y.mean())/y.std()
-        reg_no_ctrl = fit_outcome_linear(G[row_bool,:][:,col_bool], y, sum(col_bool), CV=False, verbose=True)
-        pmf_no_ctrl[col_bool, o] = reg_no_ctrl.coef_
-        pmf_no_ctrl[~col_bool, o] = np.nan
-        reg_dcf = fit_outcome_linear(X, y, sum(col_bool), CV=False, verbose=True)
-        pmf_dcf[col_bool, o] = reg_dcf.coef_[:sum(col_bool)]
-        pmf_dcf[~col_bool, o] = np.nan
-    else:
-        pmf_no_ctrl[:,o] = np.nan
-        pmf_dcf[:,o] = np.nan
-        print("Less than 10 samples, skip outcome {}".format(o))
-
-
-
-np.savetxt(os.path.join(out_dir, "pmf_no_ctrl_indept_threshold_standy_coef.txt"), pmf_no_ctrl)
-np.savetxt(os.path.join(out_dir, "pmf_dcf_indept_threshold_standy_coef.txt"), pmf_dcf)
+# #### multi cause single outcome
+#
+# pmf_no_ctrl = np.zeros([n_causes, n_outcomes])
+# pmf_dcf = np.zeros([n_causes, n_outcomes])
+#
+# for o in range(n_outcomes):
+#     print("Outcome {}".format(o))
+#     row_bool = mask[:, o] == 1
+#     col_bool = G[row_bool,:].sum(axis=0) >= 0.001*mask[:,o].sum() # find drugs at least 0.1% frequent for each outcome
+#     if sum(row_bool) >= 10000:
+#         X = np.column_stack([G[row_bool,:][:,col_bool], pmf_z_post_np[row_bool, :]])
+#         y = Y[row_bool, o]
+#         y = (y-y.mean())/y.std()
+#         reg_no_ctrl = fit_outcome_linear(G[row_bool,:][:,col_bool], y, sum(col_bool), regularization="Ridge", params=np.logspace(1,7,7), CV=True, verbose=True)
+#         pmf_no_ctrl[col_bool, o] = reg_no_ctrl.coef_
+#         pmf_no_ctrl[~col_bool, o] = np.nan
+#         reg_dcf = fit_outcome_linear(X, y, sum(col_bool), regularization="Ridge", params=np.logspace(1,7,7), CV=True, verbose=True)
+#         pmf_dcf[col_bool, o] = reg_dcf.coef_[:sum(col_bool)]
+#         pmf_dcf[~col_bool, o] = np.nan
+#     else:
+#         pmf_no_ctrl[:,o] = np.nan
+#         pmf_dcf[:,o] = np.nan
+#         print("skip outcome {}".format(o))
+#
+#
+# np.savetxt(os.path.join(out_dir, "pmf_no_ctrl_indept_threshold_standy_ridge_cv_coef.txt"), pmf_no_ctrl)
+# np.savetxt(os.path.join(out_dir, "pmf_dcf_indept_threshold_standy_ridge_cv_coef.txt"), pmf_dcf)
 
 # Y[mask==0] = np.nan
 # col_mean = np.nanmean(Y, axis=0)
