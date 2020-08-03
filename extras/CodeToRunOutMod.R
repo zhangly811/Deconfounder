@@ -25,7 +25,8 @@ meas <- as.data.frame(as.matrix(meas))
 measIdx <- Matrix::readMM(file=file.path(inputFolder, "measChangeIndexMat.txt"))
 drugName <- as.character(read.csv(file=file.path(inputFolder, "drugName.csv"), row.names = 1)[,1])
 measName <- as.character(read.csv(file=file.path(inputFolder, "measName.csv"), row.names = 1)[,1])
-
+colnames(drug) <- drugName
+colnames(meas) <- measName
 # x_df <- read.csv(paste0(DATA_PATH, "drugSparseMat.txt"), row.names = 1, header = TRUE)
 conf <- read.table(file.path(factorModResFolder, "pmf_z_post_np.txt"))
 drugConf <- as.data.frame(cbind(drug, conf))
@@ -46,15 +47,17 @@ for (o in seq(numOutcomes)){
 
   y <- meas[rowIdx, o]
   x <- drug[rowIdx,]
-  xc <- drugConf[rowIdx,]
+  noDrugIdx <- which(colSums(x)==0)
+  x <- x[,-noDrugIdx]
+  xc <- as.data.frame(cbind(x, conf[rowIdx,]))
 
 
   if (length(y)>=numCauses){
-    ridgeNoCtrl = rstanarm::stan_glm(y~., data = x, family = gaussian(), prior = normal(),
+    ridgeNoCtrl = stan_glm(y~., data = x, family = gaussian(), prior = lasso(),
                         algorithm = "meanfield", adapt_delta = NULL, QR = FALSE,
                         sparse = TRUE)
 
-    ridgeDcf = stan_glm(y~., data = xc, family = gaussian(), prior = normal(),
+    ridgeDcf = stan_glm(y~., data = xc, family = gaussian(), prior = lasso(),
                                    algorithm = "meanfield", adapt_delta = NULL, QR = FALSE,
                                    sparse = TRUE)
   }
@@ -62,22 +65,22 @@ for (o in seq(numOutcomes)){
 # CI
 ci95_no_control <- posterior_interval(ridgeNoCtrl, prob = 0.95)
 ci95_def <- posterior_interval(ridgeDcf, prob = 0.95)
+numCauses <- numCauses - length(noDrugIdx)
 # store coefficients mean and 95%CI in a dataframe
-res <- round(cbind(fitridge_no_control$coefficients[2:n_causes], ci95_no_control[2:n_causes,],
-                   fitridge_def$coefficients[2:n_causes], ci95_def[2:n_causes,]), 2)
+res <- round(cbind(ridgeNoCtrl$coefficients[2:numCauses], ci95_no_control[2:numCauses,],
+                   ridgeDcf$coefficients[2:numCauses], ci95_def[2:numCauses,]), 2)
 res <- as.data.frame(res)
 colnames(res) <- c('mean_no_control', '2.5%_nc', '97.5%_nc', 'mean_def', '2.5%_def', '97.5%_def')
 res <- res[order(res$mean_def),]
 # plot
-g1<-ggplotGrob(stan_plot(fitridge_no_control, point_est = 'mean', ci_level = 0.80, pars = rownames(res),
+g1<-ggplotGrob(stan_plot(ridgeNoCtrl, point_est = 'mean', ci_level = 0.80, pars = rownames(res),
                          est_color = 'dodgerblue2', fill_color = 'dodgerblue4', outline_color = 'dodgerblue2')+
-                 ggtitle("Unadjusted model") + scale_x_continuous(name="Estimated coefficients", breaks=seq(-0.8, 0.8, 0.2))
-)
+                 ggtitle("Unadjusted model"))#, breaks=seq(-0.8, 0.8, 0.2)
 
-g2<-ggplotGrob(stan_plot(fitridge_def, point_est = 'mean', ci_level = 0.80, pars = rownames(res),
+g2<-ggplotGrob(stan_plot(ridgeDcf, point_est = 'mean', ci_level = 0.80, pars = rownames(res),
                          est_color = 'dodgerblue2', fill_color = 'dodgerblue4', outline_color = 'dodgerblue2')+
-                 ggtitle("Deconfounder") + scale_x_continuous(name="Estimated coefficients", breaks=seq(-0.8, 0.8, 0.2))
-)
+                 ggtitle("Deconfounder") + geom_point(shape=1))#, breaks=seq(-0.8, 0.8, 0.2))
+
 g <- cbind(g1,g2, size = 'first')
 grid.newpage()
 grid.draw(g)
@@ -125,7 +128,7 @@ saveRDS(fitridge_def, file = file.path(outputFolder, 'fitridge_def.rds'))
 # write.csv(res, file = paste0(DATA_PATH, "coeffs_hs_in_R.csv"))
 # saveRDS(fiths_no_control, file = paste0(DATA_PATH, 'fiths_no_control.rds'))
 # saveRDS(fiths_def, file = paste0(DATA_PATH, 'fiths_def.rds'))
-# # load
+# # loadQ
 # res <- read.csv(paste0(DATA_PATH, "coeffs_hs_in_R_v1.csv"), row.names = 1)
 # fiths_no_control <- readRDS(paste0(DATA_PATH, 'fiths_no_control_v1.rds'))
 # fiths_def <- readRDS(paste0(DATA_PATH, 'fiths_def_v1.rds'))
