@@ -93,19 +93,23 @@ def sim_multiple_traits(lambdas, G, a, b, n_outcomes, K=10, causalprop=0.05, bin
     return y, y_bin, true_betas, true_lambdas, betas, gamma, lambdacoefs
 
 
-def fit_multiple_outcome_linear(X, y, true_betas, n_causes, CV=False, lowdim=False, K=10, n_iter=1000, verbose=False):
+def fit_multiple_outcome_linear(X, y, n_causes, true_betas=None, CV=False, lowdim=False, K=10, n_iter=1000, verbose=False):
     if CV == True:
         wval, bval, vadacc, trainacc = multiple_regression_CV(X, y, n_causes, outtype="linear", lowdim=lowdim, K=K,
                                                               n_iter=n_iter, verbose=verbose)
     else:
         wval, bval, vadacc, trainacc = multiple_regression_noCV(X, y, n_causes, outtype="linear", lowdim=lowdim, K=K,
                                                                 n_iter=n_iter, verbose=verbose)
-    linear_rmse = np.sqrt(((true_betas - wval[:n_causes]) ** 2).mean())
-    trivial_rmse = np.sqrt(((true_betas - 0) ** 2).mean())
-    if verbose:
-        print("linear outcome rmse", linear_rmse, "\nlinear - trivial", linear_rmse - trivial_rmse)
-    linear_reg = (wval, bval, vadacc, trainacc)
-    return linear_reg, linear_rmse
+    if true_betas!=None:
+        linear_rmse = np.sqrt(((true_betas - wval[:n_causes]) ** 2).mean())
+        trivial_rmse = np.sqrt(((true_betas - 0) ** 2).mean())
+        if verbose:
+            print("linear outcome rmse", linear_rmse, "\nlinear - trivial", linear_rmse - trivial_rmse)
+        linear_reg = (wval, bval, vadacc, trainacc)
+        return linear_reg, linear_rmse
+    else:
+        linear_reg = (wval, bval, vadacc, trainacc)
+        return linear_reg
 
 
 def fit_multiple_outcome_logistic(X, y_bin, true_betas, n_causes, CV=False, lowdim=False, K=10, n_iter=1000,
