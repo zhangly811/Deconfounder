@@ -1,26 +1,21 @@
-reticulate::use_python(Sys.which("python3"))
+# specify which python to use
+reticulate::use_condaenv("dcf", conda = "/opt/anaconda2/bin/conda", required=TRUE)
 e <- environment()
-reticulate::source_python(system.file(package='MvDeconfounder','python','deepExponentialFamily.py'), envir = e)
-reticulate::source_python(system.file(package='MvDeconfounder','python','outcomeModel.py'), envir = e)
+reticulate::source_python(system.file(package='MvDeconfounder','python','simulate_data.py'), envir = e)
+reticulate::source_python(system.file(package='MvDeconfounder','python','dcf.py'), envir = e)
 reticulate::source_python(system.file(package='MvDeconfounder','python','utils.py'), envir = e)
-reticulate::source_python(system.file(package='MvDeconfounder','python','main.py'), envir = e)
 
-data <- reticulate::r_to_py(x$data)
+# data <- reticulate::r_to_py(x$data)
+
+N=5000
+K=10
+D=50
+Nsim = 500
+
+X, C, Ys, betas <- simulate_multicause_data(N, K, D, Nsim)
 
 # specify parameters
-learning_rate = 1e-4
-max_steps = as.integer(1000)
-layer_sizes = c("50", "10")
-shape = 1.0
-holdout_portion = 0.5
-# data directory and file name
-data_dir = '/Users/linyingzhang/LargeFiles/Blei/multivariate_medical_deconfounder/dat/'
-data_filename = 'sparse_matrix_X.csv'
-# directory for outputs
-factor_model_dir = "/tmp/factor_model/"
-outcome_model_dir = "/tmp/outcome_model/"
-# simulation
-fake_data = TRUE
 
-main(learning_rate, max_steps, layer_sizes, shape, holdout_portion,
-     data_dir, data_filename, factor_model_dir, outcome_model_dir, fake_data)
+x_train, x_vad, holdout_mask <- holdout_data(X)
+x_post, U_post, V_post, pmf_x_post_np, pmf_z_post_np <- fit_pmf(x_train, gamma_prior=0.1, M=100, K=10, n_iter=20000, optimizer=tf.train.RMSPropOptimizer(1e-4))
+overall_pval <- pmf_predictive_check(x_train, x_vad, holdout_mask, x_post, V_post, U_post,n_rep=10, n_eval=10)
