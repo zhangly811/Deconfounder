@@ -1,4 +1,4 @@
-# Copyright 2019 Observational Health Data Sciences and Informatics
+# Copyright 2020 Observational Health Data Sciences and Informatics
 #
 # This file is part of MvConfounder
 #
@@ -197,6 +197,8 @@ generateMvdData<-function(connection,
 
 }
 
+
+
 #' Listing function
 #' @export
 unadjIndeptRidgeReg <- function(inputFolder,
@@ -260,4 +262,35 @@ unadjIndeptRidgeReg <- function(inputFolder,
          drugCorMat
          )
   )
+}
+
+
+#' Listing function
+#' @export
+fitDeconfounder <- function(learning_rate,
+                            max_steps,
+                            latent_dim,
+                            batch_size,
+                            num_samples,
+                            holdout_portion,
+                            print_steps,
+                            tolerance,
+                            num_confounder_samples,
+                            cv,
+                            outcome_type,
+                            project_dir){
+  e <- environment()
+  reticulate::source_python(system.file(package='MvDeconfounder','python','main.py'), envir=e)
+  fit_deconfounder(learning_rate,
+                   max_steps,
+                   latent_dim,
+                   batch_size,
+                   num_samples,
+                   holdout_portion,
+                   print_steps,
+                   tolerance,
+                   num_confounder_samples,
+                   cv,
+                   outcome_type,
+                   project_dir)
 }

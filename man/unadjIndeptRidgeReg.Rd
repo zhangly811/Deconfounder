@@ -4,7 +4,12 @@
 \alias{unadjIndeptRidgeReg}
 \title{Listing function}
 \usage{
-unadjIndeptRidgeReg(inputFolder, outputFolder)
+unadjIndeptRidgeReg(
+  inputFolder,
+  outputFolder,
+  cvFold = 5,
+  lambdas = 10^seq(2, -2, by = -0.1)
+)
 }
 \description{
 Listing function

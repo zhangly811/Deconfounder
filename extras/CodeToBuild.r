@@ -1,4 +1,4 @@
-# Copyright 2019 Observational Health Data Sciences and Informatics
+# Copyright 2020 Observational Health Data Sciences and Informatics
 #
 # This file is part of MvDeconfounder
 #
@@ -24,11 +24,9 @@ shell("rm extras/MvDeconfounder.pdf")
 shell("R CMD Rd2pdf ./ --output=extras/MvDeconfounder.pdf")
 
 # Create vignettes ---------------------------------------------------------
-# rmarkdown::render("vignettes/UsingMvDeconfounders.Rmd",
-#                   output_file = "../inst/doc/UsingSkeletonPackage.pdf",
-#                   rmarkdown::pdf_document(latex_engine = "pdflatex",
-#                                           toc = TRUE,
-#                                           number_sections = TRUE))
+# rmarkdown::render('vignettes/UsingMvDeconfounders.Rmd', output_file =
+# '../inst/doc/UsingSkeletonPackage.pdf', rmarkdown::pdf_document(latex_engine = 'pdflatex', toc =
+# TRUE, number_sections = TRUE))
 
 # Store environment in which the study was executed -----------------------
 OhdsiRTools::insertEnvironmentSnapshotInPackage("MvDeconfounder")
@@ -38,5 +36,5 @@ OhdsiRTools::formatRFolder()
 OhdsiRTools::checkUsagePackage("MvDeconfounder")
 OhdsiRTools::updateCopyrightYearFolder()
 
-#usethis::create_package(getwd())
+# usethis::create_package(getwd())
 roxygen2::roxygenize()

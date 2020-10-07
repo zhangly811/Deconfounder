@@ -1,21 +1,56 @@
 # specify which python to use
-reticulate::use_condaenv("dcf", conda = "/opt/anaconda2/bin/conda", required=TRUE)
-e <- environment()
-reticulate::source_python(system.file(package='MvDeconfounder','python','simulate_data.py'), envir = e)
-reticulate::source_python(system.file(package='MvDeconfounder','python','dcf.py'), envir = e)
-reticulate::source_python(system.file(package='MvDeconfounder','python','utils.py'), envir = e)
+reticulate::use_condaenv("deconfounder_py3",required=TRUE)
+fitDeconfounder <- function(learning_rate,
+                            max_steps,
+                            latent_dim,
+                            batch_size,
+                            num_samples,
+                            holdout_portion,
+                            print_steps,
+                            tolerance,
+                            num_confounder_samples,
+                            cv,
+                            outcome_type,
+                            project_dir){
+  e <- environment()
+  reticulate::source_python('inst/python/main.py', envir=e)
+  fit_deconfounder(learning_rate,
+                   max_steps,
+                   latent_dim,
+                   batch_size,
+                   num_samples,
+                   holdout_portion,
+                   print_steps,
+                   tolerance,
+                   num_confounder_samples,
+                   cv,
+                   outcome_type,
+                   project_dir)
+}
 
-# data <- reticulate::r_to_py(x$data)
+learning_rate=0.01
+max_steps=as.integer(5000)
+latent_dim=as.integer(1)
+batch_size=as.integer(1024)
+num_samples=as.integer(1)
+holdout_portion=0.2
+print_steps=as.integer(50)
+tolerance=as.integer(3)
+num_confounder_samples=as.integer(100)
+CV=as.integer(5)
+outcome_type='linear'
+project_dir="C:/Users/lz2629/git/zhangly811/MvDeconfounder"
 
-N=5000
-K=10
-D=50
-Nsim = 500
+fitDeconfounder(learning_rate,
+                max_steps,
+                latent_dim,
+                batch_size,
+                num_samples,
+                holdout_portion,
+                print_steps,
+                tolerance,
+                num_confounder_samples,
+                cv,
+                outcome_type,
+                project_dir)
 
-X, C, Ys, betas <- simulate_multicause_data(N, K, D, Nsim)
-
-# specify parameters
-
-x_train, x_vad, holdout_mask <- holdout_data(X)
-x_post, U_post, V_post, pmf_x_post_np, pmf_z_post_np <- fit_pmf(x_train, gamma_prior=0.1, M=100, K=10, n_iter=20000, optimizer=tf.train.RMSPropOptimizer(1e-4))
-overall_pval <- pmf_predictive_check(x_train, x_vad, holdout_mask, x_post, V_post, U_post,n_rep=10, n_eval=10)
