@@ -2,15 +2,17 @@ DBMS:
 sql server
 
 Error:
-com.microsoft.sqlserver.jdbc.SQLServerException: There is already an object named 'DECONFOUNDER_COHORT' in the database.
+com.microsoft.sqlserver.jdbc.SQLServerException: There is already an object named 'potassium_cohort_drug_exposure' in the database.
 
 SQL:
-CREATE TABLE ohdsi_cumc_deid_2020q2r2.results.DECONFOUNDER_COHORT (
-	cohort_definition_id INT,
-	subject_id BIGINT,
-	cohort_start_date DATE,
-	cohort_end_date DATE
-	)
+CREATE TABLE ohdsi_cumc_deid_2020q2r2.results.potassium_cohort_drug_exposure(
+    subject_id VARCHAR(255),
+    cohort_start_date DATE,
+    drug_exposure_start_date DATE,
+    drug_concept_id VARCHAR(255),
+    ancestor_concept_id VARCHAR(255),
+    concept_name VARCHAR(255)
+)
 
 R version:
 R version 3.6.1 (2019-07-05)
@@ -28,3 +30,4 @@ Attached base packages:
 - base
 
 Other attached packages:
+- MvDeconfounder (0.0.0.9000)

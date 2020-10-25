@@ -26,18 +26,20 @@
 #'                              available this can speed up the analyses.
 #'
 #' @export
-createCohorts <- function(connection,
-                          cdmDatabaseSchema,
-                          oracleTempSchema = NULL,
-                          vocabularyDatabaseSchema = cdmDatabaseSchema,
-                          cohortDatabaseSchema,
-                          targetCohortTable,
-                          createTargetCohortTable=FALSE,
-                          conditionConceptIds,
-                          measurementConceptId,
-                          observationWindowBefore,
-                          observationWindowAfter,
-                          targetCohortId) {
+createCohorts <- function(
+  connection,
+  cdmDatabaseSchema,
+  oracleTempSchema = NULL,
+  vocabularyDatabaseSchema = cdmDatabaseSchema,
+  cohortDatabaseSchema,
+  targetCohortTable,
+  createTargetCohortTable=FALSE,
+  conditionConceptIds,
+  measurementConceptId,
+  observationWindowBefore,
+  observationWindowAfter,
+  targetCohortId
+) {
 
   # Create study cohort table structure:
   if (createTargetCohortTable){
@@ -49,19 +51,20 @@ createCohorts <- function(connection,
     DatabaseConnector::executeSql(connection, sql, progressBar = TRUE, reportOverallTime = FALSE)
   }
 
-  sql <- SqlRender::loadRenderTranslateSql(sqlFilename = "cohort_k.sql",
+  sql <- SqlRender::loadRenderTranslateSql(sqlFilename = "cohort.sql",
                                            packageName = "MvDeconfounder",
                                            dbms = attr(connection, "dbms"),
                                            oracleTempSchema = oracleTempSchema,
                                            cdm_database_schema = cdmDatabaseSchema,
-                                           # condition_concept_ids = conditionConceptIds,
-                                           # measurement_concept_id = measurementConceptId,
-                                           # observation_window_before = observationWindowBefore,
-                                           # observation_window_after = observationWindowAfter,
+                                           condition_concept_ids = conditionConceptIds,
+                                           measurement_concept_id = measurementConceptId,
+                                           observation_window_before = observationWindowBefore,
+                                           observation_window_after = observationWindowAfter,
                                            target_cohort_id = targetCohortId,
                                            target_cohort_table = targetCohortTable,
                                            target_database_schema = cohortDatabaseSchema,
-                                           vocabulary_database_schema = vocabularyDatabaseSchema)
+                                           vocabulary_database_schema = vocabularyDatabaseSchema
+  )
   DatabaseConnector::executeSql(connection, sql, progressBar = TRUE, reportOverallTime = FALSE)
 }
 

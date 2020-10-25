@@ -35,34 +35,62 @@ connection <- DatabaseConnector::connect(connectionDetails)
 cdmDatabaseSchema <- 'ohdsi_cumc_deid_2020q2r2.dbo'
 cohortDatabaseSchema <-'ohdsi_cumc_deid_2020q2r2.results'
 ## Medical deconfounder (single outcome)
-conditionConceptIds = c(434610,437833)
-measurementConceptId = c(4154489)
+conditionConceptIds <- c(434610,437833) # Hypo and hyperkalemia
+measurementConceptId <- c(3023103) # serum potassium
 
-observationWindowBefore = 7
-observationWindowAfter = 30
+observationWindowBefore <- 7
+observationWindowAfter <- 30
 targetCohortTable <- 'DECONFOUNDER_COHORT'
-targetCohortId = 1
-createCohorts(connection = connection,
-              cdmDatabaseSchema = cdmDatabaseSchema,
-              oracleTempSchema = NULL,
-              vocabularyDatabaseSchema = cdmDatabaseSchema,
-              cohortDatabaseSchema = cohortDatabaseSchema,
-              targetCohortTable = targetCohortTable,
-              createTargetCohortTable = FALSE,
-              conditionConceptIds = conditionConceptIds,
-              measurementConceptId = measurementConceptId,
-              observationWindowBefore = observationWindowBefore,
-              observationWindowAfter = observationWindowAfter,
-              targetCohortId)
+targetCohortId <- 1
+# createCohorts(connection = connection,
+#               cdmDatabaseSchema = cdmDatabaseSchema,
+#               oracleTempSchema = NULL,
+#               vocabularyDatabaseSchema = cdmDatabaseSchema,
+#               cohortDatabaseSchema = cohortDatabaseSchema,
+#               targetCohortTable = targetCohortTable,
+#               createTargetCohortTable = TRUE,
+#               conditionConceptIds = conditionConceptIds,
+#               measurementConceptId = measurementConceptId,
+#               observationWindowBefore = observationWindowBefore,
+#               observationWindowAfter = observationWindowAfter,
+#               targetCohortId)
 
 
+
+# Create study cohort table structure:
+drugExposureTable <- "potassium_cohort_drug_exposure"
+sql <- SqlRender::loadRenderTranslateSql(sqlFilename = "extractDrug.sql",
+                                         packageName = "MvDeconfounder",
+                                         dbms = attr(connection, "dbms"),
+                                         oracleTempSchema = NULL,
+                                         drug_exposure_table = drugExposureTable,
+                                         cdm_database_schema = cdmDatabaseSchema,
+                                         target_cohort_id = targetCohortId,
+                                         target_cohort_table = targetCohortTable,
+                                         target_database_schema = cohortDatabaseSchema)
+
+DatabaseConnector::executeSql(connection, sql, progressBar = TRUE, reportOverallTime = FALSE)
+
+# Create study cohort table structure:
+measExposureTable <- "potassium_cohort_drug_exposure"
+sql <- SqlRender::loadRenderTranslateSql(sqlFilename = "extractDrug.sql",
+                                         packageName = "MvDeconfounder",
+                                         dbms = attr(connection, "dbms"),
+                                         oracleTempSchema = NULL,
+                                         drug_exposure_table = drugExposureTable,
+                                         cdm_database_schema = cdmDatabaseSchema,
+                                         target_cohort_id = targetCohortId,
+                                         target_cohort_table = targetCohortTable,
+                                         target_database_schema = cohortDatabaseSchema)
+
+DatabaseConnector::executeSql(connection, sql, progressBar = TRUE, reportOverallTime = FALSE)
 
 
 
 ## Multivariate deconfounder
 targetCohortTable <- 'MVDECONFOUNDER_COHORT'
 targetCohortId <- 1
-DataFolder <- 'dat/20191116Complete'
+DataFolder <- 'dat/PackageTest'
 ResFolder <- 'res/PackageTest'
 ingredientList <- readRDS(file = file.path(DataFolder, 'ingredientList.rds'))
 ingredientConceptIds <-ingredientList[[1]]$conceptId
@@ -77,7 +105,7 @@ mVdData <- MvDeconfounder::generateMvdData(connection = connection,
                                            minimumProportion = 0.001,
                                            targetDrugTable = 'DRUG_ERA',
                                            ingredientConceptIds = ingredientConceptIds,
-                                           measurementConceptIds =measurementConceptIds,
+                                           measurementConceptIds = measurementConceptIds,
                                            createTargetCohort = F,
                                            extractDrugFeature = T,
                                            extractMeasFeature = T,
