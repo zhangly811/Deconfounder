@@ -2,17 +2,10 @@ DBMS:
 sql server
 
 Error:
-com.microsoft.sqlserver.jdbc.SQLServerException: There is already an object named 'potassium_cohort_drug_exposure' in the database.
+com.microsoft.sqlserver.jdbc.SQLServerException: Must declare the scalar variable "@target_database_schema".
 
 SQL:
-CREATE TABLE ohdsi_cumc_deid_2020q2r2.results.potassium_cohort_drug_exposure(
-    subject_id VARCHAR(255),
-    cohort_start_date DATE,
-    drug_exposure_start_date DATE,
-    drug_concept_id VARCHAR(255),
-    ancestor_concept_id VARCHAR(255),
-    concept_name VARCHAR(255)
-)
+SELECT * FROM @target_database_schema.@measurement_table
 
 R version:
 R version 3.6.1 (2019-07-05)
