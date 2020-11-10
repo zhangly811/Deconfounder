@@ -2,10 +2,11 @@ DBMS:
 sql server
 
 Error:
-com.microsoft.sqlserver.jdbc.SQLServerException: Must declare the scalar variable "@target_database_schema".
+com.microsoft.sqlserver.jdbc.SQLServerException: Database 'ohdsi_cumc_deid_pending' cannot be opened because it is offline.
 
 SQL:
-SELECT * FROM @target_database_schema.@measurement_table
+IF OBJECT_ID('ohdsi_cumc_deid_pending.results.MVDECONFOUNDER_COHORT', 'U') IS NOT NULL
+DROP TABLE ohdsi_cumc_deid_pending.results.MVDECONFOUNDER_COHORT
 
 R version:
 R version 3.6.1 (2019-07-05)

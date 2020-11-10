@@ -84,16 +84,16 @@ createCohorts <- function(
 #'
 #' @export
 createMvdCohorts <- function(connection,
-                          cdmDatabaseSchema,
-                          oracleTempSchema = NULL,
-                          vocabularyDatabaseSchema = cdmDatabaseSchema,
-                          cohortDatabaseSchema,
-                          targetCohortTable,
-                          ingredientConceptIds,
-                          measurementConceptIds,
-                          # drugWindow = 35,
-                          labWindow = 35,
-                          targetCohortId) {
+                             cdmDatabaseSchema,
+                             oracleTempSchema = NULL,
+                             vocabularyDatabaseSchema = cdmDatabaseSchema,
+                             cohortDatabaseSchema,
+                             targetCohortTable,
+                             ingredientConceptIds,
+                             measurementConceptIds,
+                             # drugWindow = 35,
+                             labWindow = 35,
+                             targetCohortId) {
   ingredientConceptIds<-paste(ingredientConceptIds,collapse=",")
   measurementConceptIds<-paste(measurementConceptIds,collapse=",")
 

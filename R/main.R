@@ -14,6 +14,99 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+#' Listing function
+#' @export
+generateData<-function(connection,
+                       cdmDatabaseSchema,
+                       oracleTempSchema = NULL,
+                       vocabularyDatabaseSchema = cdmDatabaseSchema,
+                       cohortDatabaseSchema,
+                       targetCohortTable,
+                       drugExposureTable,
+                       measurementTable,
+                       conditionConceptIds,
+                       measurementConceptId,
+                       observationWindowBefore,
+                       observationWindowAfter,
+                       drugWindow,
+                       createTargetCohortTable = T,
+                       createTargetCohort = T,
+                       extractFeature = T,
+                       targetCohortId=NULL,
+                       dataFolder){
+  ParallelLogger::addDefaultFileLogger(file.path(dataFolder, "log.txt"))
+
+
+
+  if(createTargetCohort){
+
+    if(is.null(targetCohortId)){
+      ParallelLogger::logWarn("Warning: target Cohort Id was set as 9999 automatically")
+      targetCohortId <- 9999
+    }
+    ParallelLogger::logInfo("The cohorts are being generated")
+
+    MvDeconfounder::createCohorts(connection = connection,
+                                  cdmDatabaseSchema = cdmDatabaseSchema,
+                                  oracleTempSchema = oracleTempSchema,
+                                  vocabularyDatabaseSchema = cdmDatabaseSchema,
+                                  cohortDatabaseSchema = cohortDatabaseSchema,
+                                  targetCohortTable = targetCohortTable,
+                                  createTargetCohortTable = createTargetCohortTable,
+                                  conditionConceptIds = conditionConceptIds,
+                                  measurementConceptId = measurementConceptId,
+                                  observationWindowBefore = observationWindowBefore,
+                                  observationWindowAfter = observationWindowAfter,
+                                  targetCohortId)
+
+
+    ParallelLogger::logInfo("Cohort was generated")
+
+  } else {
+    if(is.null(targetCohortId)) stop ("You should specify targetCohortId if you don't create the cohort")
+  }
+
+  # get features
+  if (extractFeature){
+
+    # Create drug exposure table and measurement table:
+    sql <- SqlRender::loadRenderTranslateSql(sqlFilename = "extractDrugAndMeas.sql",
+                                             packageName = "MvDeconfounder",
+                                             dbms = attr(connection, "dbms"),
+                                             oracleTempSchema = oracleTempSchema,
+                                             drug_exposure_table = drugExposureTable,
+                                             measurement_table = measurementTable,
+                                             target_cohort_id = targetCohortId,
+                                             measurement_concept_id = measurementConceptId,
+                                             observation_window_before = observationWindowBefore,
+                                             observation_window_after = observationWindowAfter,
+                                             drug_window = drugWindow,
+                                             cdm_database_schema = cdmDatabaseSchema,
+                                             target_cohort_id = targetCohortId,
+                                             target_cohort_table = targetCohortTable,
+                                             target_database_schema = cohortDatabaseSchema)
+
+    DatabaseConnector::executeSql(connection, sql, progressBar = TRUE, reportOverallTime = FALSE)
+
+    # load data into R
+    sql<-SqlRender::render("SELECT * FROM @target_database_schema.@measurement_table",
+                           target_database_schema = cohortDatabaseSchema,
+                           measurement_table = measurementTable)
+    meas <- DatabaseConnector::querySql(connection, sql)
+    sql<-SqlRender::render("SELECT * FROM @target_database_schema.@drug_exposure_table",
+                           target_database_schema = cohortDatabaseSchema,
+                           drug_exposure_table = drugExposureTable)
+    drug <- DatabaseConnector::querySql(connection, sql)
+    write.csv(meas, file.path(dataFolder, "meas.csv"))
+    write.csv(drug, file.path(dataFolder, "drug.csv"))
+    ParallelLogger::logInfo("Features were generated and saved at data folder")
+  } else {
+    ParallelLogger::logInfo("Features were not generated.")
+  }
+}
+
+
 #' Listing function
 #' @export
 generateMvdData<-function(connection,
@@ -201,87 +294,26 @@ generateMvdData<-function(connection,
 
 #' Listing function
 #' @export
-unadjIndeptRidgeReg <- function(inputFolder,
-                               outputFolder,
-                               cvFold = 5,
-                               lambdas = 10^seq(2, -2, by = -.1)
-                               ){
-  # load data
-  ParallelLogger::logInfo("Loading in drug and measurement data for unadjusted independent ridge regression ...")
-  drug <- Matrix::readMM(file=file.path(inputFolder, "drugSparseMat.txt"))
-  drug <- drug*1
-  meas <- Matrix::readMM(file=file.path(inputFolder, "measChangeSparseMat.txt"))
-  meas <- meas*1
-  measIdx <- Matrix::readMM(file=file.path(inputFolder, "measChangeIndexMat.txt"))
-  drugName <- as.character(read.csv(file=file.path(inputFolder, "drugName.csv"), row.names = 1)[,1])
-  measName <- as.character(read.csv(file=file.path(inputFolder, "measName.csv"), row.names = 1)[,1])
-
-  # normalize measurements
-  meas@x <- meas@x / rep.int(Matrix::colSums(meas), diff(meas@p))
-
-  numDrug <- ncol(drug)
-  numMeas <- ncol(meas)
-
-  coefMat <- matrix(data = NA, nrow = numDrug, ncol = numMeas)
-  rownames(coefMat) <- drugName
-  colnames(coefMat) <- measName
-  res <- matrix(data = NA, nrow = 2, ncol = numMeas)
-  rownames(res) <- c("Number of records", "lambda")
-
-  for (outcome in seq(numMeas)){
-    rowIdx <- which(meas[,outcome]!=0)
-    y <- meas[rowIdx, outcome]
-    x <- drug[rowIdx,]
-    res[1,outcome]<-length(y)
-    if (length(y)>cvFold*numDrug){
-      ParallelLogger::logInfo(paste("Running model for outcome", outcome))
-      cv_fit <- glmnet::cv.glmnet(x, y,
-                                  alpha = 0, lambda = lambdas,
-                                  nfolds=cvFold)
-      res[2,outcome] <- cv_fit$lambda.min
-      coefMat[,outcome] <- coef(cv_fit, s = "lambda.min")[1:numDrug+1]
-      write.csv(coefMat, file=file.path(outputFolder, "coefMat.csv"))
-    }
-    else{
-      ParallelLogger::logInfo(paste("Skip outcome", outcome, "because of not enough records in the cohort."))
-    }
-  }
-  coefMat<-coefMat[,!colSums(!is.finite(coefMat))]
-  drugName <- rownames(coefMat)
-  measName <- colnames(coefMat)
-  measCorMat <- cor(coefMat)
-  drugCorMat <- cor(t(coefMat))
-
-  # d3heatmap::d3heatmap(measCorMat, symm = TRUE)
-  # d3heatmap::d3heatmap(drugCorMat, symm = TRUE)
-
-  return(
-    list(coefMat,
-         res,
-         measCorMat,
-         drugCorMat
-         )
-  )
-}
-
-
-#' Listing function
-#' @export
-fitDeconfounder <- function(learning_rate,
-                            max_steps,
-                            latent_dim,
-                            batch_size,
-                            num_samples,
-                            holdout_portion,
-                            print_steps,
-                            tolerance,
-                            num_confounder_samples,
-                            cv,
-                            outcome_type,
-                            project_dir){
+fitDeconfounder <- function(data_dir,
+                            save_dir,
+                            factor_model,
+                            learning_rate=0.001,
+                            max_steps=5000,
+                            latent_dim=1,
+                            batch_size=1024,
+                            num_samples=1, # number of samples from variational distribution
+                            holdout_portion=0.2,
+                            print_steps=50,
+                            tolerance=3,
+                            num_confounder_samples=30, # number of samples of substitute confounder from the posterior
+                            CV=5,
+                            outcome_type='linear'){
   e <- environment()
   reticulate::source_python(system.file(package='MvDeconfounder','python','main.py'), envir=e)
-  fit_deconfounder(learning_rate,
+  fit_deconfounder(data_dir,
+                   save_dir,
+                   factor_model,
+                   learning_rate,
                    max_steps,
                    latent_dim,
                    batch_size,
@@ -290,7 +322,6 @@ fitDeconfounder <- function(learning_rate,
                    print_steps,
                    tolerance,
                    num_confounder_samples,
-                   cv,
-                   outcome_type,
-                   project_dir)
+                   CV,
+                   outcome_type)
 }
