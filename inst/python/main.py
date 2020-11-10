@@ -984,21 +984,22 @@ def fit_deconfounder(data_dir,
     treatment_effects_df = pd.DataFrame(treatment_effects, columns=df.columns)
     treatment_effects_df.to_csv(os.path.join(param_save_dir, "treatment_effects.csv"))
 
-outputFolder = "C:/Users/lz2629/git/zhangly811/MvDeconfounder/res"
-dataFolder = "C:/Users/lz2629/git/zhangly811/MvDeconfounder/dat"
-factorModel = 'DEF'
-fit_deconfounder(data_dir=dataFolder,
-                 save_dir=outputFolder,
-                 factor_model=factorModel,
-                 learning_rate=0.0001,
-                 max_steps=100000,
-                 latent_dim=1,
-                 layer_dim=[30, 10],
-                 batch_size=1024,
-                 num_samples=1, # number of samples from variational distribution
-                 holdout_portion=0.5,
-                 print_steps=50,
-                 tolerance=3,
-                 num_confounder_samples=30, # number of samples of substitute confounder from the posterior
-                 CV=5,
-                 outcome_type='linear')
+# For testing in python
+# outputFolder = "C:/Users/lz2629/git/zhangly811/MvDeconfounder/res"
+# dataFolder = "C:/Users/lz2629/git/zhangly811/MvDeconfounder/dat"
+# factorModel = 'DEF'
+# fit_deconfounder(data_dir=dataFolder,
+#                  save_dir=outputFolder,
+#                  factor_model=factorModel,
+#                  learning_rate=0.0001,
+#                  max_steps=100000,
+#                  latent_dim=1,
+#                  layer_dim=[30, 10],
+#                  batch_size=1024,
+#                  num_samples=1, # number of samples from variational distribution
+#                  holdout_portion=0.5,
+#                  print_steps=50,
+#                  tolerance=3,
+#                  num_confounder_samples=30, # number of samples of substitute confounder from the posterior
+#                  CV=5,
+#                  outcome_type='linear')

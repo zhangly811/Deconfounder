@@ -41,6 +41,7 @@ drugWindow <- 7
 
 measFilename <- "meas.csv"
 drugFilename <- "drug.csv"
+dataFolder <- "C:/Users/lz2629/git/zhangly811/MvDeconfounder/dat"
 generateData(connection,
              cdmDatabaseSchema,
              oracleTempSchema = NULL,
@@ -66,13 +67,18 @@ generateData(connection,
 reticulate::use_condaenv("deconfounder_py3", required = TRUE)
 reticulate::source_python("inst/python/preprocessing.py")
 preprocessing(dataFolder, measFilename, drugFilename)
-factorModel <- 'PMF'
-fitDeconfounder(data_dir=dataFolder,
+
+
+outputFolder = "C:/Users/lz2629/git/zhangly811/MvDeconfounder/res"
+factorModel <- 'DEF'
+
+MvDeconfounder::fitDeconfounder(data_dir=dataFolder,
                 save_dir=outputFolder,
                 factor_model=factorModel,
-                learning_rate=0.001,
-                max_steps=5000,
+                learning_rate=0.0001,
+                max_steps=100000,
                 latent_dim=1,
+                layer_dim=c(30, 10),
                 batch_size=1024,
                 num_samples=1, # number of samples from variational distribution
                 holdout_portion=0.5,
@@ -81,4 +87,4 @@ fitDeconfounder(data_dir=dataFolder,
                 num_confounder_samples=30, # number of samples of substitute confounder from the posterior
                 CV=5,
                 outcome_type='linear'
-                )
+)
