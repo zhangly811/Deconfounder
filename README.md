@@ -20,15 +20,22 @@ Requires R (version 3.4.0 or higher), Python (version 3.7 or higher) and Java.
 Dependencies
 ============
 OHDSI R packages:
- * DatabaseConnector[https://github.com/OHDSI/DatabaseConnector]
- * SqlRender[https://github.com/OHDSI/SqlRender]
+
+- [DatabaseConnector](https://github.com/OHDSI/DatabaseConnector)
+
+- [SqlRender](https://github.com/OHDSI/SqlRender)
  
 Python packages:
- *torch==1.6.0
- *numpy
- *pandas
- *scipy
- *sklearn
+
+- torch==1.6.0
+
+- numpy
+
+- pandas
+
+- scipy
+
+- sklearn
  
 Installation
 ============
@@ -40,7 +47,7 @@ devtools::install_github("zhangly811/MvDeconfounder")
  
 User Documentation
 ============
-Vignette: Deconfounder on single outcome[https://github.com/zhangly81/MvDeconfounder/inst/doc/DeconfounderSingleOutcome.pdf]
+Vignette: [Deconfounder on single outcome](https://raw.githubusercontent.com/zhangly81/MvDeconfounder/inst/doc/DeconfounderSingleOutcome.pdf)
 
 
 
