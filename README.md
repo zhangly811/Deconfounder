@@ -47,7 +47,7 @@ devtools::install_github("zhangly811/MvDeconfounder")
  
 User Documentation
 ============
-Vignette: [Deconfounder on single outcome](https://raw.githubusercontent.com/zhangly81/MvDeconfounder/inst/doc/DeconfounderSingleOutcome.pdf)
+Vignette: [Deconfounder on single outcome](https://github.com/zhangly811/MvDeconfounder/blob/master/inst/doc/DeconfounderSingleOutcome.pdf)
 
 
 
