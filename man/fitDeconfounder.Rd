@@ -2,7 +2,7 @@
 % Please edit documentation in R/Main.R
 \name{fitDeconfounder}
 \alias{fitDeconfounder}
-\title{Listing function}
+\title{fit the deconfounder to estimate average treatment effect}
 \usage{
 fitDeconfounder(
   data_dir,
@@ -22,6 +22,37 @@ fitDeconfounder(
   outcome_type = "linear"
 )
 }
+\arguments{
+\item{data_dir}{String: the directory where cohort data are stored}
+
+\item{save_dir}{String: the directory where results will be stored}
+
+\item{factor_model}{String: the type of probabilistic factor model to fit. Choices are: PMF or DEF.}
+
+\item{learning_rate}{Float: The learning rate for the probabilistic factor model.}
+
+\item{max_steps}{Integer: the maximum steps to run the probabilistic factor model.}
+
+\item{latent_dim}{Integer: the number of latent dimensions in PMF.}
+
+\item{layer_dim}{List: a list of length 2. The number of latent dimensions in each layer of the 2-layer DEF.}
+
+\item{batch_size}{Integer: the number of datapoints to use in each training step of the probabilistic model.}
+
+\item{num_samples}{Integer: number of samples from variational distribution used in updating variational parameters.}
+
+\item{holdout_portion}{Float: A value between 0 and 1. The proportion of data heldout for predictive model checking in checking the probabilistic model.}
+
+\item{print_steps}{Integer: Print the results during training.}
+
+\item{tolerance}{Integer: The termination criteria for training the probabilistic model.}
+
+\item{num_confounder_samples}{Integer: number of samples of substitute confounder from the posterior, input for the outcome model for estimating ATE.}
+
+\item{CV}{Integer: Fold of cross validation in the outcome model.}
+
+\item{outcome_type}{String: The type of outcome. Choices are: linear}
+}
 \description{
-Listing function
+fit the deconfounder to estimate average treatment effect
 }

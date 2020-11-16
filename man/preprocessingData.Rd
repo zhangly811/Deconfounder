@@ -2,10 +2,19 @@
 % Please edit documentation in R/Main.R
 \name{preprocessingData}
 \alias{preprocessingData}
-\title{Listing function}
+\title{Preprocess data}
 \usage{
 preprocessingData(dataFolder, measFilename, drugFilename, drugWindow)
 }
+\arguments{
+\item{dataFolder}{A string indicates where output will be stored.}
+
+\item{measFilename}{A string for the name of the table to store measurement.}
+
+\item{drugFilename}{A string for the name of the table to store drug exposure.}
+
+\item{drugWindow}{An integer indicates the number of post-treatment days during which drug exposure are also considered. Default is 0}
+}
 \description{
-Listing function
+Preprocess data
 }

@@ -1,6 +1,6 @@
 # Copyright 2020 Observational Health Data Sciences and Informatics
 #
-# This file is part of MvDeconfounder
+# This file is part of Deconfounder
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ connectionDetails = DatabaseConnector::createConnectionDetails(dbms = "sql serve
 connection = DatabaseConnector::connect(connectionDetails)
 cdmDatabaseSchema = "ohdsi_cumc_deid_2020q2r2.dbo"
 cohortDatabaseSchema = "ohdsi_cumc_deid_2020q2r2.results"
-targetCohortTable = "MVDECONFOUNDER_COHORT"
+targetCohortTable = "Deconfounder_COHORT"
 targetCohortId = 2
 drugExposureTable = "SAMPLE_COHORT_DRUG_EXPOSURE"
 measurementTable = "SAMPLE_COHORT_MEASUREMENT"
@@ -41,8 +41,8 @@ drugWindow <- 0
 
 measFilename <- "meas.csv"
 drugFilename <- "drug.csv"
-dataFolder <- "C:/Users/lz2629/git/zhangly811/MvDeconfounder/dat"
-MvDeconfounder::generateData(connection,
+dataFolder <- "C:/Users/lz2629/dat/DeconfounderSampleDat"
+Deconfounder::generateData(connection,
              cdmDatabaseSchema,
              oracleTempSchema = NULL,
              vocabularyDatabaseSchema = cdmDatabaseSchema,
@@ -65,13 +65,13 @@ MvDeconfounder::generateData(connection,
 
 
 reticulate::use_condaenv("deconfounder_py3", required = TRUE)
-MvDeconfounder::preprocessingData(dataFolder, measFilename, drugFilename, drugWindow)
+Deconfounder::preprocessingData(dataFolder, measFilename, drugFilename, drugWindow)
 
 
 factorModel <- 'DEF'
-outputFolder <- "C:/Users/lz2629/git/zhangly811/MvDeconfounder/res"
+outputFolder <- "C:/Users/lz2629/dat/DeconfounderSampleRes"
 
-MvDeconfounder::fitDeconfounder(data_dir=dataFolder,
+Deconfounder::fitDeconfounder(data_dir=dataFolder,
                 save_dir=outputFolder,
                 factor_model=factorModel,
                 learning_rate=0.0001,

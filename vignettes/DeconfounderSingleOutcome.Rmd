@@ -24,7 +24,7 @@ Specify the following database schemas. The *targetCohortTable* is the name of t
 ```{r}
 cdmDatabaseSchema = "ohdsi_cumc_deid_2020q2r2.dbo"
 cohortDatabaseSchema = "ohdsi_cumc_deid_2020q2r2.results"
-targetCohortTable = "MVDECONFOUNDER_COHORT"
+targetCohortTable = "DECONFOUNDER_COHORT"
 drugExposureTable = "SAMPLE_COHORT_DRUG_EXPOSURE"
 measurementTable = "SAMPLE_COHORT_MEASUREMENT"
 targetCohortId = 1
@@ -51,7 +51,7 @@ To create the cohort and extract drug exposures and pre-treatment and post-treat
 measFilename <- "meas.csv"
 drugFilename <- "drug.csv"
 dataFolder <- "path/to/datafolder"
-MvDeconfounder::generateData(connection,
+Deconfounder::generateData(connection,
              cdmDatabaseSchema,
              oracleTempSchema = NULL,
              vocabularyDatabaseSchema = cdmDatabaseSchema,
@@ -83,7 +83,7 @@ reticulate::use_condaenv("deconfounder_py3", required = TRUE)
 
 First, preprocess the data for the deconfounder.
 ```{r preprocess, eval=FALSE}
-MvDeconfounder::preprocessingData(dataFolder, measFilename, drugFilename, drugWindow)
+Deconfounder::preprocessingData(dataFolder, measFilename, drugFilename, drugWindow)
 ```
 
 Specify the factor model to use, currently supporting "PMF" (poisson matrix factoriation) and "DEF" (two-layer deep exponential family).
@@ -96,7 +96,7 @@ outputFolder <- "path/to/outputFolder"
 Next, fit the deconfounder to estimate average treatment effect (ATE). 
 
 ```{r deconfounder, eval=FALSE}
-MvDeconfounder::fitDeconfounder(data_dir=dataFolder,
+Deconfounder::fitDeconfounder(data_dir=dataFolder,
                 save_dir=outputFolder,
                 factor_model=factorModel,
                 learning_rate=0.0001,

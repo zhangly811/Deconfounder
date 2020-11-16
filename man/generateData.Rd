@@ -2,7 +2,7 @@
 % Please edit documentation in R/Main.R
 \name{generateData}
 \alias{generateData}
-\title{Listing function}
+\title{Generate data}
 \usage{
 generateData(
   connection,
@@ -27,6 +27,53 @@ generateData(
   measFilename
 )
 }
+\arguments{
+\item{connection}{Connection to the database. An object of class connect as created by the connect function in the DatabaseConnector package.}
+
+\item{cdmDatabaseSchema}{A schema where OMOP CDM data are stored.}
+
+\item{oracleTempSchema}{A schema that can be used to create temp tables in when using Oracle.}
+
+\item{vocabularyDatabaseSchema}{A schema where vocabulary is stored}
+
+\item{cohortDatabaseSchema}{A schema where the cohort is stored}
+
+\item{targetCohortTable}{A string corresponds to the name of the cohort table}
+
+\item{drugExposureTable}{A string corresponds to the name of the drug exposure table}
+
+\item{measurementTable}{A string corresponds to the name of the measurement table}
+
+\item{conditionConceptIds}{A list of condition concept IDs that correspond to the disease of interest.}
+
+\item{measurementConceptId}{A numeric of measurement concept ID}
+
+\item{observationWindowBefore}{An integer indicates the number of pre-treatment days used to look for pre-treatment measurement.}
+
+\item{observationWindowAfter}{An integer indicates the number of post-treatment days used to look for post-treatment measurement.}
+
+\item{drugWindow}{An integer indicates the number of post-treatment days during which drug exposure are also considered. Default is 0}
+
+\item{createTargetCohortTable}{A boolean that indicates whether the targetCohortTable will be created. Default TRUE.}
+
+\item{createTargetCohort}{A boolean that indicates whether to create the cohort. Default TRUE.}
+
+\item{extractFeature}{A boolean that indicates whether to extract features for the cohort. Default TRUE.}
+
+\item{targetCohortId}{An integer of the cohort ID.}
+
+\item{dataFolder}{A string indicates where output will be stored.}
+
+\item{drugFilename}{A string for the name of the table to store drug exposure.}
+
+\item{measFilename}{A string for the name of the table to store measurement.}
+}
+\value{
+Returns a string containing the rendered SQL.
+}
 \description{
-Listing function
+Generate data
+}
+\details{
+This function generates cohort and extracts data of the cohort.
 }

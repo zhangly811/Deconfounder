@@ -1,6 +1,6 @@
 # Copyright 2020 Observational Health Data Sciences and Informatics
 #
-# This file is part of MvDeconfounder
+# This file is part of Deconfounder
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,24 +16,26 @@
 
 # Format and check code ---------------------------------------------------
 OhdsiRTools::formatRFolder()
-OhdsiRTools::checkUsagePackage("MvDeconfounder")
+OhdsiRTools::checkUsagePackage("Deconfounder")
 OhdsiRTools::updateCopyrightYearFolder()
 
 # Create manual -----------------------------------------------------------
-shell("rm extras/MvDeconfounder.pdf")
-shell("R CMD Rd2pdf ./ --output=extras/MvDeconfounder.pdf")
+shell("rm extras/Deconfounder.pdf")
+shell("R CMD Rd2pdf ./ --output=extras/Deconfounder.pdf")
 
 # Create vignettes ---------------------------------------------------------
-# rmarkdown::render('vignettes/UsingMvDeconfounders.Rmd', output_file =
-# '../inst/doc/UsingSkeletonPackage.pdf', rmarkdown::pdf_document(latex_engine = 'pdflatex', toc =
-# TRUE, number_sections = TRUE))
+rmarkdown::render("vignettes/DeconfounderSingleOutcome.Rmd",
+                  output_file = "../inst/doc/DeconfounderSingleOutcome.pdf",
+                  rmarkdown::pdf_document(latex_engine = "pdflatex",
+                                          toc = TRUE,
+                                          number_sections = TRUE))
 
 # Store environment in which the study was executed -----------------------
-OhdsiRTools::insertEnvironmentSnapshotInPackage("MvDeconfounder")
+OhdsiRTools::insertEnvironmentSnapshotInPackage("Deconfounder")
 
 # Format and check code ---------------------------------------------------
 OhdsiRTools::formatRFolder()
-OhdsiRTools::checkUsagePackage("MvDeconfounder")
+OhdsiRTools::checkUsagePackage("Deconfounder")
 OhdsiRTools::updateCopyrightYearFolder()
 
 # usethis::create_package(getwd())

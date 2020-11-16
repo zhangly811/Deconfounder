@@ -11,7 +11,7 @@ createCohorts(
   vocabularyDatabaseSchema = cdmDatabaseSchema,
   cohortDatabaseSchema,
   targetCohortTable,
-  createTargetCohortTable = FALSE,
+  createTargetCohortTable = TRUE,
   conditionConceptIds,
   measurementConceptId,
   observationWindowBefore,
@@ -21,12 +21,34 @@ createCohorts(
 )
 }
 \arguments{
-\item{connection}{Name of local folder where the results were generated; make sure to use forward slashes
-(/). Do not use a folder on a network drive since this greatly impacts
-performance.}
+\item{connection}{Connection to the database. An object of class connect as created by the connect function in the DatabaseConnector package.}
 
-\item{cdmDatabaseSchema}{How many parallel cores should be used? If more cores are made
-available this can speed up the analyses.}
+\item{cdmDatabaseSchema}{A schema where OMOP CDM data are stored.}
+
+\item{oracleTempSchema}{A schema that can be used to create temp tables in when using Oracle.}
+
+\item{vocabularyDatabaseSchema}{A schema where vocabulary is stored}
+
+\item{cohortDatabaseSchema}{A schema where the cohort is stored}
+
+\item{targetCohortTable}{A string corresponds to the name of cohort table}
+
+\item{createTargetCohortTable}{A boolean that indicates whether the targetCohortTable will be created. Default TRUE.}
+
+\item{conditionConceptIds}{A list of condition concept IDs that correspond to the disease of interest.}
+
+\item{measurementConceptId}{A numeric of measurement concept ID}
+
+\item{observationWindowBefore}{An integer indicates the number of pre-treatment days used to look for pre-treatment measurement.}
+
+\item{observationWindowAfter}{An integer indicates the number of post-treatment days used to look for post-treatment measurement.}
+
+\item{drugWindow}{An integer indicates the number of post-treatment days during which drug exposure are also considered. Default is 0}
+
+\item{targetCohortId}{An integer of the cohort ID.}
+}
+\value{
+Returns a string containing the rendered SQL.
 }
 \description{
 Generate cohort

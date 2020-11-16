@@ -1,6 +1,6 @@
 # Copyright 2020 Observational Health Data Sciences and Informatics
 #
-# This file is part of MvDeconfounder
+# This file is part of Deconfounder
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -55,7 +55,7 @@ createCohorts <- function(
   # Create study cohort table structure:
   if (createTargetCohortTable){
     sql <- SqlRender::loadRenderTranslateSql(sqlFilename = "CreateCohortTable.sql",
-                                             packageName = "MvDeconfounder",
+                                             packageName = "Deconfounder",
                                              dbms = attr(connection, "dbms"),
                                              cohort_table = targetCohortTable,
                                              cohort_database_schema = cohortDatabaseSchema)
@@ -63,7 +63,7 @@ createCohorts <- function(
   }
 
   sql <- SqlRender::loadRenderTranslateSql(sqlFilename = "cohort.sql",
-                                           packageName = "MvDeconfounder",
+                                           packageName = "Deconfounder",
                                            dbms = attr(connection, "dbms"),
                                            oracleTempSchema = oracleTempSchema,
                                            cdm_database_schema = cdmDatabaseSchema,
@@ -78,43 +78,4 @@ createCohorts <- function(
                                            vocabulary_database_schema = vocabularyDatabaseSchema
   )
   DatabaseConnector::executeSql(connection, sql, progressBar = TRUE, reportOverallTime = TRUE)
-}
-
-
-
-
-#' Generate cohort
-#'
-#' @details
-#' This function generates cohort for the medical deconfounder with multiple outcomes.
-#'
-createMvdCohorts <- function(connection,
-                             cdmDatabaseSchema,
-                             oracleTempSchema = NULL,
-                             vocabularyDatabaseSchema = cdmDatabaseSchema,
-                             cohortDatabaseSchema,
-                             targetCohortTable,
-                             ingredientConceptIds,
-                             measurementConceptIds,
-                             # drugWindow = 35,
-                             labWindow = 35,
-                             targetCohortId) {
-  ingredientConceptIds<-paste(ingredientConceptIds,collapse=",")
-  measurementConceptIds<-paste(measurementConceptIds,collapse=",")
-
-  # Create study cohort table structure:
-  sql <- SqlRender::loadRenderTranslateSql(sqlFilename = "MvdCohort.sql",
-                                           packageName = "MvDeconfounder",
-                                           dbms = attr(connection, "dbms"),
-                                           oracleTempSchema = oracleTempSchema,
-                                           cdm_database_schema = cdmDatabaseSchema,
-                                           ingredient_concept_ids = ingredientConceptIds,
-                                           measurement_concept_ids= measurementConceptIds,
-                                           #drug_window = drugWindow,
-                                           lab_window = labWindow,
-                                           target_cohort_id = targetCohortId,
-                                           target_cohort_table = targetCohortTable,
-                                           target_database_schema = cohortDatabaseSchema,
-                                           vocabulary_database_schema=vocabularyDatabaseSchema)
-  DatabaseConnector::executeSql(connection, sql, progressBar = TRUE, reportOverallTime = FALSE)
 }
