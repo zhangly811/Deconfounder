@@ -28,7 +28,7 @@ def remove_vaccines(drug):
 
     return drug
 
-def extract_closest_before_and_after_lab(lab):
+def extract_closest_before_and_after_lab(lab, drug_window):
     # if multiple values exist within a day, take the mean
     lab = lab.groupby(['subject_id', 'cohort_start_date', \
                        'measurement_concept_id', 'measurement_date', 'concept_name'])[
@@ -38,8 +38,7 @@ def extract_closest_before_and_after_lab(lab):
     lab_before = lab[lab['measurement_date'] <= lab['cohort_start_date']].sort_values(
         ['subject_id', 'measurement_date'], ascending=[True, True])
     lab_before = lab_before.groupby('subject_id').tail(1)
-
-    lab_after = lab[lab['measurement_date'] > lab['cohort_start_date']].sort_values(['subject_id', 'measurement_date'],
+    lab_after = lab[lab['measurement_date'] - pd.Timedelta(days=drug_window) > lab['cohort_start_date']].sort_values(['subject_id', 'measurement_date'],
                                                                                     ascending=[True, True])
     lab_after = lab_after.groupby('subject_id').head(1)
 
@@ -47,12 +46,12 @@ def extract_closest_before_and_after_lab(lab):
     common = \
         set.intersection(set(lab_before.subject_id), set(lab_after.subject_id))
 
-    lab_before = lab_before[lab_before.subject_id.isin(common)][['subject_id', 'cohort_start_date', 'value_as_number']]
-    lab_after = lab_after[lab_after.subject_id.isin(common)][['subject_id', 'cohort_start_date', 'value_as_number']]
+    lab_before = lab_before[lab_before.subject_id.isin(common)][['subject_id', 'cohort_start_date', 'measurement_date', 'value_as_number']]
+    lab_after = lab_after[lab_after.subject_id.isin(common)][['subject_id', 'cohort_start_date', 'measurement_date', 'value_as_number']]
     return lab_before, lab_after
 
 
-def preprocessing(DATA_PATH, measFilename, drugFilename):
+def preprocessing(DATA_PATH, measFilename, drugFilename, drugWindow):
     # order drugs by time within patient
     lab, drug = read_data(DATA_PATH, measFilename, drugFilename)
 
@@ -67,7 +66,7 @@ def preprocessing(DATA_PATH, measFilename, drugFilename):
     lab.dropna(subset=['value_as_number'], inplace=True)
 
     drug = remove_vaccines(drug)
-    lab_before, lab_after = extract_closest_before_and_after_lab(lab)
+    lab_before, lab_after = extract_closest_before_and_after_lab(lab, drugWindow)
 
 
     # remove rare drugs (<5%)
@@ -111,3 +110,7 @@ def preprocessing(DATA_PATH, measFilename, drugFilename):
     lab_before.to_csv(os.path.join(DATA_PATH, "pre_treatment_lab.csv"), index=False)
     lab_after.to_csv(os.path.join(DATA_PATH, "post_treatment_lab.csv"), index=False)
 
+
+
+# dataFolder = "C:/Users/lz2629/git/zhangly811/MvDeconfounder/dat"
+# preprocessing(dataFolder, "meas.csv", "drug.csv", 7)

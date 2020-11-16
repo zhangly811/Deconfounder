@@ -34,7 +34,9 @@ generateData<-function(connection,
                        createTargetCohort = T,
                        extractFeature = T,
                        targetCohortId=NULL,
-                       dataFolder){
+                       dataFolder,
+                       drugFilename,
+                       measFilename){
   ParallelLogger::addDefaultFileLogger(file.path(dataFolder, "log.txt"))
 
 
@@ -58,6 +60,7 @@ generateData<-function(connection,
                                   measurementConceptId = measurementConceptId,
                                   observationWindowBefore = observationWindowBefore,
                                   observationWindowAfter = observationWindowAfter,
+                                  drugWindow = drugWindow,
                                   targetCohortId)
 
 
@@ -87,7 +90,7 @@ generateData<-function(connection,
                                              target_cohort_table = targetCohortTable,
                                              target_database_schema = cohortDatabaseSchema)
 
-    DatabaseConnector::executeSql(connection, sql, progressBar = TRUE, reportOverallTime = FALSE)
+    DatabaseConnector::executeSql(connection, sql, progressBar = TRUE, reportOverallTime = TRUE)
 
     # load data into R
     sql<-SqlRender::render("SELECT * FROM @target_database_schema.@measurement_table",
@@ -98,8 +101,8 @@ generateData<-function(connection,
                            target_database_schema = cohortDatabaseSchema,
                            drug_exposure_table = drugExposureTable)
     drug <- DatabaseConnector::querySql(connection, sql)
-    write.csv(meas, file.path(dataFolder, "meas.csv"))
-    write.csv(drug, file.path(dataFolder, "drug.csv"))
+    write.csv(meas, file.path(dataFolder, measFilename))
+    write.csv(drug, file.path(dataFolder, drugFilename))
     ParallelLogger::logInfo("Features were generated and saved at data folder")
   } else {
     ParallelLogger::logInfo("Features were not generated.")
@@ -290,6 +293,13 @@ generateMvdData<-function(connection,
 
 }
 
+
+#' Listing function
+#' @export
+preprocessingData <- function(dataFolder, measFilename, drugFilename, drugWindow){
+  reticulate::source_python("inst/python/preprocessing.py")
+  preprocessing(dataFolder, measFilename, drugFilename, drugWindow)
+}
 
 
 #' Listing function

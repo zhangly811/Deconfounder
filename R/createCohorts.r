@@ -19,11 +19,21 @@
 #' @details
 #' This function generates cohort for the medical deconfounder (single outcome)
 #'
-#' @param connection         Name of local folder where the results were generated; make sure to use forward slashes
-#'                             (/). Do not use a folder on a network drive since this greatly impacts
-#'                             performance.
-#' @param cdmDatabaseSchema     How many parallel cores should be used? If more cores are made
-#'                              available this can speed up the analyses.
+#' @param connection Connection to the database. An object of class connect as created by the connect function in the DatabaseConnector package.
+#' @param cdmDatabaseSchema A schema where OMOP CDM data are stored.
+#' @param oracleTempSchema            A schema that can be used to create temp tables in when using Oracle.
+#' @param vocabularyDatabaseSchema A schema where vocabulary is stored
+#' @param cohortDatabaseSchema A schema where the cohort is stored
+#' @param targetCohortTable A string corresponds to the name of cohort table
+#' @param createTargetCohortTable A boolean that indicates whether the targetCohortTable will be created. Default TRUE.
+#' @param conditionConceptIds A list of condition concept IDs that correspond to the disease of interest.
+#' @param measurementConceptId A numeric of measurement concept ID
+#' @param observationWindowBefore An integer indicates the number of pre-treatment days used to look for pre-treatment measurement.
+#' @param observationWindowAfter An integer indicates the number of post-treatment days used to look for post-treatment measurement.
+#' @param drugWindow An integer indicates the number of post-treatment days during which drug exposure are also considered. Default is 0
+#' @param targetCohortId An integer of the cohort ID.
+#' @return
+#' Returns a string containing the rendered SQL.
 #'
 #' @export
 createCohorts <- function(
@@ -33,11 +43,12 @@ createCohorts <- function(
   vocabularyDatabaseSchema = cdmDatabaseSchema,
   cohortDatabaseSchema,
   targetCohortTable,
-  createTargetCohortTable=FALSE,
+  createTargetCohortTable=TRUE,
   conditionConceptIds,
   measurementConceptId,
   observationWindowBefore,
   observationWindowAfter,
+  drugWindow,
   targetCohortId
 ) {
 
@@ -48,7 +59,7 @@ createCohorts <- function(
                                              dbms = attr(connection, "dbms"),
                                              cohort_table = targetCohortTable,
                                              cohort_database_schema = cohortDatabaseSchema)
-    DatabaseConnector::executeSql(connection, sql, progressBar = TRUE, reportOverallTime = FALSE)
+    DatabaseConnector::executeSql(connection, sql, progressBar = FALSE, reportOverallTime = FALSE)
   }
 
   sql <- SqlRender::loadRenderTranslateSql(sqlFilename = "cohort.sql",
@@ -60,12 +71,13 @@ createCohorts <- function(
                                            measurement_concept_id = measurementConceptId,
                                            observation_window_before = observationWindowBefore,
                                            observation_window_after = observationWindowAfter,
+                                           drug_window = drugWindow,
                                            target_cohort_id = targetCohortId,
                                            target_cohort_table = targetCohortTable,
                                            target_database_schema = cohortDatabaseSchema,
                                            vocabulary_database_schema = vocabularyDatabaseSchema
   )
-  DatabaseConnector::executeSql(connection, sql, progressBar = TRUE, reportOverallTime = FALSE)
+  DatabaseConnector::executeSql(connection, sql, progressBar = TRUE, reportOverallTime = TRUE)
 }
 
 
@@ -74,15 +86,8 @@ createCohorts <- function(
 #' Generate cohort
 #'
 #' @details
-#' This function generates cohort for the multivariate deconfounder
+#' This function generates cohort for the medical deconfounder with multiple outcomes.
 #'
-#' @param connection         Name of local folder where the results were generated; make sure to use forward slashes
-#'                             (/). Do not use a folder on a network drive since this greatly impacts
-#'                             performance.
-#' @param cdmDatabaseSchema     How many parallel cores should be used? If more cores are made
-#'                              available this can speed up the analyses.
-#'
-#' @export
 createMvdCohorts <- function(connection,
                              cdmDatabaseSchema,
                              oracleTempSchema = NULL,

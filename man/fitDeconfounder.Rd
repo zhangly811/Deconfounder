@@ -5,18 +5,21 @@
 \title{Listing function}
 \usage{
 fitDeconfounder(
-  learning_rate,
-  max_steps,
-  latent_dim,
-  batch_size,
-  num_samples,
-  holdout_portion,
-  print_steps,
-  tolerance,
-  num_confounder_samples,
-  cv,
-  outcome_type,
-  project_dir
+  data_dir,
+  save_dir,
+  factor_model,
+  learning_rate = 1e-04,
+  max_steps = 1e+05,
+  latent_dim = 1,
+  layer_dim = c(30, 10),
+  batch_size = 1024,
+  num_samples = 1,
+  holdout_portion = 0.5,
+  print_steps = 50,
+  tolerance = 3,
+  num_confounder_samples = 30,
+  CV = 5,
+  outcome_type = "linear"
 )
 }
 \description{

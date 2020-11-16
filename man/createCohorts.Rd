@@ -16,6 +16,7 @@ createCohorts(
   measurementConceptId,
   observationWindowBefore,
   observationWindowAfter,
+  drugWindow,
   targetCohortId
 )
 }

@@ -22,8 +22,8 @@ connection = DatabaseConnector::connect(connectionDetails)
 
 Specify the following database schemas. The *targetCohortTable* is the name of the cohort table. Change the *targetCohortId* when create a new cohort.
 ```{r}
-cdmDatabaseSchema = "ohdsi_cumc_deid_pending.dbo"
-cohortDatabaseSchema = "ohdsi_cumc_deid_pending.results"
+cdmDatabaseSchema = "ohdsi_cumc_deid_2020q2r2.dbo"
+cohortDatabaseSchema = "ohdsi_cumc_deid_2020q2r2.results"
 targetCohortTable = "MVDECONFOUNDER_COHORT"
 targetCohortId = 1
 

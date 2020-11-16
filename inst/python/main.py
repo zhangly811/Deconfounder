@@ -3,7 +3,6 @@ import shutil
 import time
 import torch
 from tqdm import tqdm
-from absl import flags
 import numpy as np
 import pandas as pd
 from scipy import sparse, stats
@@ -296,6 +295,7 @@ class PPCA(torch.nn.Module):
         pvals = np.array([np.mean(rep_ll_per_zi[:,i] < obs_ll_per_zi[i]) for i in range(self.num_datapoints)])
         overall_pval = np.mean(pvals[holdout_subjects])
         print("Predictive check p-values", overall_pval)
+        self.summary_writer.add_scalar("predictive check p-values", overall_pval)
 
 class PMF(torch.nn.Module):
     """Object to hold model parameters and approximate ELBO."""
@@ -472,6 +472,7 @@ class PMF(torch.nn.Module):
         pvals = np.array([np.mean(rep_ll_per_zi[:,i] < obs_ll_per_zi[i]) for i in range(self.num_datapoints)])
         overall_pval = np.mean(pvals[holdout_subjects])
         print("Predictive check p-values", overall_pval)
+        self.summary_writer.add_scalar("predictive check p-values", overall_pval)
 
 class VariationalFamilyDEF(torch.nn.Module):
     """Object to store variational parameters and get sample statistics."""
@@ -745,6 +746,7 @@ class DEF(torch.nn.Module):
         pvals = np.array([np.mean(rep_ll_per_zi[:,i] < obs_ll_per_zi[i]) for i in range(self.num_datapoints)])
         overall_pval = np.mean(pvals[holdout_subjects])
         print("Predictive check p-values", overall_pval)
+        self.summary_writer.add_scalar("predictive check p-values", overall_pval)
 
 def regression_CV(X, y, outtype="linear", verbose=False):
     X_train, X_test, y_train, y_test = \
@@ -965,8 +967,21 @@ def fit_deconfounder(data_dir,
     # fit outcome model
     covariates_df = pd.read_csv(os.path.join(data_dir, "pre_treatment_lab.csv"))
     covariates = covariates_df['value_as_number'].values
-    y_df = pd.read_csv(os.path.join(data_dir, "post_treatment_lab.csv"))
-    y = y_df['value_as_number'].values
+    outcome_df = pd.read_csv(os.path.join(data_dir, "post_treatment_lab.csv"))
+    y = outcome_df['value_as_number'].values - covariates
+
+    # Unadjusted model
+    coefficients = np.zeros((1, data_dim))
+    outcome_model = fit_outcome_model(dataset.counts, y, data_dim, outcome_type, CV=CV, verbose=True)
+    if outcome_type == 'linear':
+        coefficients[0, :] = outcome_model.coef_[:data_dim]
+    if outcome_type == 'binary':
+        coefficients[0, :] = outcome_model.coef_[0][:data_dim]
+
+    coefficients = pd.DataFrame(coefficients, columns=df.columns)
+    coefficients.to_csv(os.path.join(param_save_dir, "coefficients.csv"))
+
+    # Deconfounder (adjusting for substitute confounder)
     treatment_effects = np.zeros((num_confounder_samples, data_dim))
     for sample in range(num_confounder_samples):
         if factor_model == "PPCA":
@@ -975,14 +990,23 @@ def fit_deconfounder(data_dir,
             substitute_confounder = np.transpose(np.squeeze(model.qu_distribution.sample(1).detach().numpy()))
         if factor_model == "DEF":
             substitute_confounder = np.squeeze(model.qz1_distribution.sample(1).detach().numpy())
-        X = np.column_stack([dataset.counts, covariates, substitute_confounder])
+        X = np.column_stack([dataset.counts, substitute_confounder])
         outcome_model = fit_outcome_model(X, y, data_dim, outcome_type, CV=CV, verbose=True)
         if outcome_type == 'linear':
             treatment_effects[sample, :] = outcome_model.coef_[:data_dim]
         if outcome_type == 'binary':
             treatment_effects[sample, :] = outcome_model.coef_[0][:data_dim]
-    treatment_effects_df = pd.DataFrame(treatment_effects, columns=df.columns)
-    treatment_effects_df.to_csv(os.path.join(param_save_dir, "treatment_effects.csv"))
+    treatment_effects = pd.DataFrame(treatment_effects, columns=df.columns)
+    treatment_effects.to_csv(os.path.join(param_save_dir, "treatment_effects.csv"))
+
+    stats = pd.DataFrame({
+        "drug_name": treatment_effects.columns.values,
+        "mean": treatment_effects.mean(axis=0).values,
+        "stderr":treatment_effects.sem(axis=0).values,
+        "ci95_lower": treatment_effects.mean(axis=0).values - 1.96*treatment_effects.sem(axis=0).values,
+        "ci95_upper": treatment_effects.mean(axis=0).values + 1.96*treatment_effects.sem(axis=0).values,
+    })
+    stats.to_csv(os.path.join(param_save_dir, "treatment_effects_stats.csv"), index=False)
 
 # For testing in python
 # outputFolder = "C:/Users/lz2629/git/zhangly811/MvDeconfounder/res"
@@ -994,7 +1018,7 @@ def fit_deconfounder(data_dir,
 #                  learning_rate=0.0001,
 #                  max_steps=100000,
 #                  latent_dim=1,
-#                  layer_dim=[30, 10],
+#                  layer_dim=[30, 5],
 #                  batch_size=1024,
 #                  num_samples=1, # number of samples from variational distribution
 #                  holdout_portion=0.5,
@@ -1003,3 +1027,66 @@ def fit_deconfounder(data_dir,
 #                  num_confounder_samples=30, # number of samples of substitute confounder from the posterior
 #                  CV=5,
 #                  outcome_type='linear')
+
+
+# def debugfunc(data_dir,
+#              save_dir,
+#              factor_model,
+#              learning_rate,
+#              max_steps,
+#              latent_dim,
+#              layer_dim,
+#              batch_size,
+#              num_samples, # number of samples from variational distribution
+#              holdout_portion,
+#              print_steps,
+#              tolerance,
+#              num_confounder_samples, #number of samples of substitute confounder from the posterior
+#              CV,
+#              outcome_type):
+#     param_save_dir = os.path.join(save_dir, "{}_lr{}_maxsteps{}_latentdim{}_layerdim{}_batchsize{}_numsamples{}_holdoutp{}_tolerance{}_numconfsamples{}_CV{}_outType{}/".format(
+#         factor_model, learning_rate, max_steps, latent_dim, layer_dim, batch_size, num_samples, holdout_portion, tolerance, num_confounder_samples, CV, outcome_type
+#     ))
+#     df = pd.read_csv(os.path.join(data_dir, "drug_exposure_sparse_matrix.csv"), index_col=0)
+#
+#     covariates_df = pd.read_csv(os.path.join(data_dir, "pre_treatment_lab.csv"))
+#     data_dim=df.shape[1]
+#     covariates = covariates_df['value_as_number'].values
+#     y_df = pd.read_csv(os.path.join(data_dir, "post_treatment_lab.csv"))
+#     y = y_df['value_as_number'].values - covariates
+#
+#     treatment_effects = np.zeros((num_confounder_samples, data_dim))
+#     for sample in range(num_confounder_samples):
+#         X = df.values
+#         outcome_model = fit_outcome_model(X, y, data_dim, outcome_type, CV=CV, verbose=True)
+#         if outcome_type == 'linear':
+#             treatment_effects[sample, :] = outcome_model.coef_[:data_dim]
+#         if outcome_type == 'binary':
+#             treatment_effects[sample, :] = outcome_model.coef_[0][:data_dim]
+#     treatment_effects = pd.DataFrame(treatment_effects, columns=df.columns)
+#     treatment_effects.to_csv(os.path.join(param_save_dir, "treatment_effects.csv"))
+#
+#     stats = pd.DataFrame({
+#         "drug_name": treatment_effects.columns.values,
+#         "mean": treatment_effects.mean(axis=0).values,
+#         "stderr":treatment_effects.sem(axis=0).values,
+#         "ci95_lower": treatment_effects.mean(axis=0).values - 1.96*treatment_effects.sem(axis=0).values,
+#         "ci95_upper": treatment_effects.mean(axis=0).values + 1.96*treatment_effects.sem(axis=0).values,
+#     })
+#     stats.to_csv(os.path.join(param_save_dir, "treatment_effects_stats_test.csv"), index=False)
+#
+# debugfunc(data_dir=dataFolder,
+#           save_dir=outputFolder,
+#           factor_model=factorModel,
+#           learning_rate=0.0001,
+#           max_steps=100000,
+#           latent_dim=1,
+#           layer_dim=[30, 5],
+#           batch_size=1024,
+#           num_samples=1, # number of samples from variational distribution
+#           holdout_portion=0.5,
+#           print_steps=50,
+#           tolerance=3,
+#           num_confounder_samples=30, # number of samples of substitute confounder from the posterior
+#           CV=5,
+#           outcome_type='linear')

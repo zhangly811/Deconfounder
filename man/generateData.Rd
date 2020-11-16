@@ -22,7 +22,9 @@ generateData(
   createTargetCohort = T,
   extractFeature = T,
   targetCohortId = NULL,
-  outputFolder
+  dataFolder,
+  drugFilename,
+  measFilename
 )
 }
 \description{
