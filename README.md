@@ -63,4 +63,4 @@ References
 ===========
 Zhang L, Wang Y, Ostropolets A, Mulgrave JJ, Blei DM, Hripcsak G. [The Medical Deconfounder: Assessing Treatment Effects with Electronic Health Records.](https://arxiv.org/abs/1904.02098) Accepted at Machine Learning for Health Care (MLHC) Conference 2019.
 
-Wang Y, Blei DM. [The Blessing of Multiple Causes.](https://arxiv.org/abs/1805.06826)
+Y. Wang and D. Blei. [The blessings of multiple causes](https://www.tandfonline.com/eprint/CPWYADIPBY9KMHF6PDGB/full?target=10.1080%2F01621459.2019.1686987&).  Journal of the American Statistical Association, 114:528, 1574-1596, 2019.
