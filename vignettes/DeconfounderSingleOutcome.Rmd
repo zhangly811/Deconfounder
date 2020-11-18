@@ -74,11 +74,10 @@ Deconfounder::generateData(connection,
 ```
 
 
-The rest of the algorithm is implemented with python. First, specify the python to use using the *reticulate* package. For more 
+The rest of the algorithm is implemented with python. First, specify the python to use using the *reticulate* package. For example, use the python in a conda environment called "deconfounder_py3".
 ```{r python_env, eval=FALSE}
 reticulate::use_condaenv("deconfounder_py3", required = TRUE)
 ```
-
 
 
 First, preprocess the data for the deconfounder.
