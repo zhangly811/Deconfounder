@@ -52,6 +52,7 @@ generateData<-function(connection,
                        targetCohortTable,
                        drugExposureTable,
                        measurementTable,
+                       confounderTable,
                        conditionConceptIds,
                        measurementConceptId,
                        observationWindowBefore,
@@ -63,7 +64,8 @@ generateData<-function(connection,
                        targetCohortId=NULL,
                        dataFolder,
                        drugFilename,
-                       measFilename){
+                       measFilename,
+                       confFilename){
   ParallelLogger::addDefaultFileLogger(file.path(dataFolder, "log.txt"))
 
 
@@ -100,6 +102,32 @@ generateData<-function(connection,
   # get features
   if (extractFeature){
 
+
+
+    # Create drug exposure table and measurement table:
+    sql <- SqlRender::loadRenderTranslateSql(sqlFilename = "extractConfounder.sql",
+                                             packageName = "Deconfounder",
+                                             dbms = attr(connection, "dbms"),
+                                             oracleTempSchema = oracleTempSchema,
+                                             confounder_table = confounderTable,
+                                             cdm_database_schema = cdmDatabaseSchema,
+                                             target_cohort_id = targetCohortId,
+                                             target_cohort_table = targetCohortTable,
+                                             target_database_schema = cohortDatabaseSchema)
+
+    DatabaseConnector::executeSql(connection, sql, progressBar = TRUE, reportOverallTime = TRUE)
+
+    # load data into R
+    sql<-SqlRender::render("SELECT * FROM @target_database_schema.@confounder_table",
+                           target_database_schema = cohortDatabaseSchema,
+                           confounder_table = confounderTable)
+    conf <- DatabaseConnector::querySql(connection, sql)
+    write.csv(conf, file.path(dataFolder, confFilename))
+
+
+
+
+
     # Create drug exposure table and measurement table:
     sql <- SqlRender::loadRenderTranslateSql(sqlFilename = "extractDrugAndMeas.sql",
                                              packageName = "Deconfounder",
@@ -107,7 +135,6 @@ generateData<-function(connection,
                                              oracleTempSchema = oracleTempSchema,
                                              drug_exposure_table = drugExposureTable,
                                              measurement_table = measurementTable,
-                                             target_cohort_id = targetCohortId,
                                              measurement_concept_id = measurementConceptId,
                                              observation_window_before = observationWindowBefore,
                                              observation_window_after = observationWindowAfter,
@@ -131,10 +158,16 @@ generateData<-function(connection,
     write.csv(meas, file.path(dataFolder, measFilename))
     write.csv(drug, file.path(dataFolder, drugFilename))
     ParallelLogger::logInfo("Features were generated and saved at data folder")
+
+
   } else {
     ParallelLogger::logInfo("Features were not generated.")
   }
+
+
 }
+
+
 
 
 

@@ -31,6 +31,7 @@ targetCohortTable = "Deconfounder_COHORT"
 targetCohortId = 2
 drugExposureTable = "SAMPLE_COHORT_DRUG_EXPOSURE"
 measurementTable = "SAMPLE_COHORT_MEASUREMENT"
+confounderTable = "SAMPLE_COHORT_CONFOUNDER"
 conditionConceptIds <- c(434610,437833) # Hypo and hyperkalemia
 measurementConceptId <- c(3023103) # serum potassium
 
@@ -41,27 +42,30 @@ drugWindow <- 0
 
 measFilename <- "meas.csv"
 drugFilename <- "drug.csv"
+confFilename <- "conf.csv"
 dataFolder <- "C:/Users/lz2629/dat/DeconfounderSampleDat"
 Deconfounder::generateData(connection,
-             cdmDatabaseSchema,
-             oracleTempSchema = NULL,
-             vocabularyDatabaseSchema = cdmDatabaseSchema,
-             cohortDatabaseSchema,
-             targetCohortTable,
-             drugExposureTable,
-             measurementTable,
-             conditionConceptIds,
-             measurementConceptId,
-             observationWindowBefore,
-             observationWindowAfter,
-             drugWindow,
-             createTargetCohortTable = T,
-             createTargetCohort = T,
-             extractFeature = T,
-             targetCohortId=targetCohortId,
-             dataFolder,
-             drugFilename,
-             measFilename)
+                           cdmDatabaseSchema,
+                           oracleTempSchema = NULL,
+                           vocabularyDatabaseSchema = cdmDatabaseSchema,
+                           cohortDatabaseSchema,
+                           targetCohortTable,
+                           drugExposureTable,
+                           measurementTable,
+                           confounderTable,
+                           conditionConceptIds,
+                           measurementConceptId,
+                           observationWindowBefore,
+                           observationWindowAfter,
+                           drugWindow,
+                           createTargetCohortTable = F,
+                           createTargetCohort = F,
+                           extractFeature = T,
+                           targetCohortId=targetCohortId,
+                           dataFolder,
+                           drugFilename,
+                           measFilename,
+                           confFilename)
 
 
 reticulate::use_condaenv("deconfounder_py3", required = TRUE)
@@ -87,19 +91,19 @@ Deconfounder::fitDeconfounder(data_dir=dataFolder,
                 CV=as.integer(5), # fold of cross-val in the outcome model
                 outcome_type='linear'
 )
-
-
-library(ggplot2)
-stats <- read.csv(file = file.path(outputFolder,
-                                           "DEF_lr0.0001_maxsteps100000_latentdim1_layerdim[20, 4]_batchsize1024_numsamples1_holdoutp0.5_tolerance100_numconfsamples30_CV5_outTypelinear",
-                                           "treatment_effects_stats.csv"))
-
-stats$drug_name <- factor(stats$drug_name, levels = stats$drug_name[order(-stats$mean)])
-p2 <- ggplot(stats, aes(drug_name, mean)) + theme_gray(base_size=10)
-p2 + geom_point(size=1) +
-  geom_errorbar(aes(x = drug_name, ymin = ci95_lower, ymax = ci95_upper), width=0.2) +
-  xlab("") +
-  ylab("Estimated effect") +
-  coord_flip()
-
-
+#
+#
+# library(ggplot2)
+# stats <- read.csv(file = file.path(outputFolder,
+#                                            "DEF_lr0.0001_maxsteps100000_latentdim1_layerdim[20, 4]_batchsize1024_numsamples1_holdoutp0.5_tolerance100_numconfsamples30_CV5_outTypelinear",
+#                                            "treatment_effects_stats.csv"))
+#
+# stats$drug_name <- factor(stats$drug_name, levels = stats$drug_name[order(-stats$mean)])
+# p2 <- ggplot(stats, aes(drug_name, mean)) + theme_gray(base_size=10)
+# p2 + geom_point(size=1) +
+#   geom_errorbar(aes(x = drug_name, ymin = ci95_lower, ymax = ci95_upper), width=0.2) +
+#   xlab("") +
+#   ylab("Estimated effect") +
+#   coord_flip()
+#
+#

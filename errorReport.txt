@@ -1,0 +1,31 @@
+DBMS:
+sql server
+
+Error:
+com.microsoft.sqlserver.jdbc.SQLServerException: Incorrect syntax near '@confounder_table'.
+
+SQL:
+CREATE TABLE  ohdsi_cumc_deid_2020q2r2.results.@confounder_table(
+    person_id VARCHAR(255),
+    cohort_start_date DATE,
+    year_of_birth DATE,
+    gender_concept_id VARCHAR(255)
+)
+
+R version:
+R version 3.6.1 (2019-07-05)
+
+Platform:
+x86_64-w64-mingw32
+
+Attached base packages:
+- stats
+- graphics
+- grDevices
+- utils
+- datasets
+- methods
+- base
+
+Other attached packages:
+- Deconfounder (0.0.0.9000)

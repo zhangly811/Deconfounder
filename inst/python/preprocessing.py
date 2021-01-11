@@ -109,8 +109,3 @@ def preprocessing(DATA_PATH, measFilename, drugFilename, drugWindow):
     X_df.to_csv(os.path.join(DATA_PATH, 'drug_exposure_sparse_matrix.csv'))
     lab_before.to_csv(os.path.join(DATA_PATH, "pre_treatment_lab.csv"), index=False)
     lab_after.to_csv(os.path.join(DATA_PATH, "post_treatment_lab.csv"), index=False)
-
-
-
-# dataFolder = "C:/Users/lz2629/git/zhangly811/MvDeconfounder/dat"
-# preprocessing(dataFolder, "meas.csv", "drug.csv", 7)

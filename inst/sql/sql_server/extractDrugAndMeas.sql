@@ -45,3 +45,18 @@ and @cdm_database_schema.measurement.measurement_date > DATEADD(day, -@observati
 and @cdm_database_schema.measurement.measurement_date <= DATEADD(day, @observation_window_after, CAST(@target_database_schema.@target_cohort_table.cohort_start_date AS DATE))
 and domain_id = 'Measurement'
 and standard_concept = 'S';
+
+
+-- age and sex extraction
+CREATE TABLE  @target_database_schema.@confounder_table(
+    person_id VARCHAR(255),
+    cohort_start_date DATE,
+    year_of_birth DATE,
+    gender_concept_id VARCHAR(255)
+);
+INSERT INTO @target_database_schema.@confounder_table(person_id, cohort_start_date, year_of_birth, gender_concept_id)
+SELECT DISTINCT p.person_id, c.cohort_start_date, p.year_of_birth, p.gender_concept_id
+  FROM @target_database_schema.@target_cohort_table c, @cdm_database_schema.PERSON p
+  WHERE c.cohort_definition_id = @target_cohort_id
+  AND c.subject_id = p.person_id
+  AND standard_concept = 'S';
