@@ -1,5 +1,5 @@
 absl-py @ file:///C:/ci/absl-py_1600290345082/work
-aiohttp==3.6.2
+aiohttp==3.7.4
 astor==0.8.1
 async-timeout==3.0.1
 attrs @ file:///tmp/build/80754af9/attrs_1600298409949/work
