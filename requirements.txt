@@ -36,7 +36,7 @@ olefile==0.46
 opt-einsum==3.1.0
 pandas @ file:///C:/ci/pandas_1602088205210/work
 Pillow @ file:///C:/ci/pillow_1594298234712/work
-protobuf==3.13.0
+protobuf==3.15.0
 pyasn1==0.4.8
 pyasn1-modules==0.2.8
 pycparser @ file:///tmp/build/80754af9/pycparser_1594388511720/work
